@@ -28,6 +28,10 @@ commands through the CLI: `npx -y github:laaielichter/godotwright-gameoptimizer 
   mean more draw calls and more files. 64 m for dense towns, 128 to 256 m for forests and terrain.
 - `load_radius` (partition): at least 2 cells. Things that must exist far away (gameplay, not looks) should stay
   out of the containers, or be reached through `GOStreamer.load_all_blocking()`.
+- `instancing` is optional: Forward+ already batches identical meshes. Apply it when node count or load time is
+  the problem (tens of thousands of identical props), and keep it only if `optimizer_compare` agrees.
+- `stand_ins: false` (partition) keeps large objects as real nodes in far chunks instead of MultiMesh stand-ins:
+  fewer draw calls, more nodes.
 - `mode: "fly"` in the bench exercises streaming; `stations` gives comparable pictures.
 
 ## After the fixes: wire the runtime kit

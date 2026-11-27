@@ -23,6 +23,8 @@ The loop:
 Rules of thumb:
 
 - Never apply `instancing` or `partition` without a baseline: they are structural. Commit to git before each.
+- `instancing` is optional (the plan says so): it trades nodes for draw calls. Keep it only when the comparison
+  on the target hardware is better.
 - `partition` needs `install` first. Scripts that looked up moved nodes by path must wait for
   `GOStreamer.chunk_loaded` or use groups; the fix leaves nodes alone that a connection or a NodePath refers to.
 - On a machine without a GPU (a container, CI) frame times come from a software renderer: trust draw calls,
