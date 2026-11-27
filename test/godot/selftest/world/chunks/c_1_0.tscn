@@ -1,0 +1,252 @@
+[gd_scene load_steps=4 format=3]
+
+[sub_resource type="StandardMaterial3D" id="m"]
+albedo_color = Color(0.15, 0.50, 0.79, 1)
+
+[sub_resource type="BoxMesh" id="b"]
+material = SubResource("m")
+
+[sub_resource type="CylinderMesh" id="c"]
+
+[node name="c_1_0" type="Node3D"]
+
+[node name="M0" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35.31, 0.5, 29.48)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38.20, 0.5, 24.29)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M2" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 62.55, 0.5, 25.65)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M3" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42.59, 0.5, 4.21)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M4" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48.43, 0.5, 28.58)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M5" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 41.80, 0.5, 27.81)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M6" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37.25, 0.5, 28.31)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M7" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.95, 0.5, 10.48)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M8" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60.09, 0.5, 25.12)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M9" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60.21, 0.5, 26.22)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M10" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55.39, 0.5, 21.69)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M11" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38.34, 0.5, 13.98)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M12" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37.74, 0.5, 22.44)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M13" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 53.03, 0.5, 8.58)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M14" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.93, 0.5, 29.90)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M15" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 57.25, 0.5, 17.48)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M16" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 49.24, 0.5, 26.54)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M17" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46.60, 0.5, 12.87)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M18" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 43.16, 0.5, 8.74)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M19" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.73, 0.5, 20.39)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M20" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45.50, 0.5, 18.12)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M21" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 34.87, 0.5, 11.65)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M22" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 37.15, 0.5, 4.75)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M23" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 40.77, 0.5, 25.87)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M24" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44.93, 0.5, 13.03)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M25" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 51.37, 0.5, 8.01)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M26" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 33.22, 0.5, 16.86)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M27" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 48.03, 0.5, 20.47)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M28" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 46.15, 0.5, 21.60)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M29" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 54.94, 0.5, 8.15)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M30" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 47.85, 0.5, 15.36)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M31" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 39.75, 0.5, 13.37)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M32" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 49.81, 0.5, 28.21)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M33" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60.53, 0.5, 9.26)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M34" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 52.39, 0.5, 2.45)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M35" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 35.15, 0.5, 16.35)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M36" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 59.32, 0.5, 5.78)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M37" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 55.98, 0.5, 27.49)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M38" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 42.35, 0.5, 21.78)
+mesh = SubResource("b")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+
+[node name="M39" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 58.47, 0.5, 12.15)
+mesh = SubResource("c")
+visibility_range_end = 80.0
+visibility_range_end_margin = 8.0
+

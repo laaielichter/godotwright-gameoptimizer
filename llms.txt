@@ -1,0 +1,28 @@
+# godotwright-gameoptimizer
+
+> Performance optimizer for Godot 4 games, built for coding agents. An MCP server and CLI by laaielichter that audit
+> a project from its files, predict rendering cost across an open world, apply reversible fixes and prove each one
+> with benchmarks and screenshot comparison. Node 20+, zero dependencies, MIT.
+
+Start: `npx -y github:laaielichter/godotwright-gameoptimizer mcp` (MCP over stdio) or
+`npx -y github:laaielichter/godotwright-gameoptimizer audit <project>`.
+
+## Tools
+
+- optimizer_audit: findings with evidence and a plan of fixes. No Godot needed.
+- optimizer_costmap: predicted triangles and draw calls per world cell, hotspots, a benchmark route.
+- optimizer_textures: GPU memory per texture.
+- optimizer_fix: install | settings | textures | lods | lights | ranges | instancing | partition. dry_run supported.
+- optimizer_undo: take a fix back; every fix is journaled.
+- optimizer_bench: run the game in Godot, measure frame times, hitches, draw calls, memory, screenshots.
+- optimizer_compare: before and after, per metric and per screenshot, with a verdict.
+- optimizer_import: import assets, also on machines without a GPU.
+- optimizer_explain: why a finding costs performance and how the fix works.
+- optimizer_demo: write a heavy open-world demo project.
+
+## Docs
+
+- [README](README.md): what it solves, install per agent, the numbers.
+- [AGENTS.md](AGENTS.md): the loop for agents, repository layout and rules.
+- [Runtime kit](runtime/addons/gameoptimizer/README.md): GOQuality, GOGovernor, GOStreamer, GOSpawnQueue, GOPrewarm, GOLod, GOProbe.
+- [Skill](skills/gameoptimizer/SKILL.md): the workflow as an agent skill.

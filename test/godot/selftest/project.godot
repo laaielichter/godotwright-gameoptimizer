@@ -1,0 +1,15 @@
+config_version=5
+
+[application]
+config/name="go-rt-test"
+run/main_scene="res://main.tscn"
+
+[autoload]
+GOQuality="*res://addons/gameoptimizer/go_quality.gd"
+GOGovernor="*res://addons/gameoptimizer/go_governor.gd"
+GOSpawnQueue="*res://addons/gameoptimizer/go_spawn_queue.gd"
+GOProbe="*res://addons/gameoptimizer/go_probe.gd"
+
+[display]
+window/size/viewport_width=640
+window/size/viewport_height=360
