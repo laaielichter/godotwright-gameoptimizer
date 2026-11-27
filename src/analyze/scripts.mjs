@@ -25,7 +25,7 @@ export function analyzeScripts(project, { maxFiles = 4000 } = {}) {
   let meshBuilders = 0;
   const builders = [];
   // Tests, tools and third-party addons are not the game's frame.
-  const files = project.ext(".gd").filter((f) => !/(^|\/)(addons|tests?|tools|gut|gdunit4?)\//.test(f)).slice(0, maxFiles);
+  const files = project.ext(".gd").filter((f) => !/(^|\/)(addons|tests?|qa|tools|gut|gdunit4?)\//.test(f)).slice(0, maxFiles);
   for (const f of files) {
     const text = project.text(f);
     if (!text) continue;
