@@ -1,0 +1,60 @@
+{
+  "name": "godotwright-gameoptimizer",
+  "version": "0.1.0",
+  "mcpName": "io.github.laaielichter/godotwright-gameoptimizer",
+  "description": "Performance optimizer for Godot 4 games, built for coding agents: MCP server and CLI that audit a project without Godot, predict rendering cost across an open world, apply reversible fixes (world streaming, per-cell instancing, visibility ranges, texture memory, quality tiers, adaptive resolution) and prove each one with benchmarks and screenshot comparison.",
+  "license": "MIT",
+  "author": "laaielichter",
+  "type": "module",
+  "bin": {
+    "gameoptimizer": "bin/gameoptimizer.mjs",
+    "godotwright-gameoptimizer": "bin/gameoptimizer.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "runtime",
+    "skills",
+    "llms.txt",
+    "AGENTS.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "test:godot": "GO_TEST_GODOT=1 node --test test/*.test.mjs",
+    "check": "node --test test/*.test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/laaielichter/godotwright-gameoptimizer.git"
+  },
+  "homepage": "https://github.com/laaielichter/godotwright-gameoptimizer#readme",
+  "bugs": "https://github.com/laaielichter/godotwright-gameoptimizer/issues",
+  "keywords": [
+    "godot",
+    "godot4",
+    "godot-engine",
+    "gamedev",
+    "performance",
+    "optimization",
+    "open-world",
+    "world-streaming",
+    "lod",
+    "multimesh",
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "ai-agent",
+    "coding-agent",
+    "claude-code",
+    "codex",
+    "benchmark",
+    "profiler",
+    "cli"
+  ]
+}

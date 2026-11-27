@@ -1,0 +1,328 @@
+{
+ "version": 1,
+ "cell_size": 32.0,
+ "load_radius": 40.0,
+ "unload_radius": 56.0,
+ "chunks": [
+  {
+   "id": "c_0_0",
+   "scene": "res://world/chunks/c_0_0.tscn",
+   "center": [
+    16.0,
+    0,
+    16.0
+   ],
+   "aabb": [
+    0.0,
+    0,
+    0.0,
+    32.0,
+    2,
+    32.0
+   ],
+   "lod_scene": "res://world/chunks/c_0_0_lod.tscn",
+   "lod_radius": 200,
+   "cost": 40
+  },
+  {
+   "id": "c_0_1",
+   "scene": "res://world/chunks/c_0_1.tscn",
+   "center": [
+    16.0,
+    0,
+    48.0
+   ],
+   "aabb": [
+    0.0,
+    0,
+    32.0,
+    32.0,
+    2,
+    64.0
+   ],
+   "lod_scene": "res://world/chunks/c_0_1_lod.tscn",
+   "lod_radius": 200,
+   "cost": 40
+  },
+  {
+   "id": "c_0_2",
+   "scene": "res://world/chunks/c_0_2.tscn",
+   "center": [
+    16.0,
+    0,
+    80.0
+   ],
+   "aabb": [
+    0.0,
+    0,
+    64.0,
+    32.0,
+    2,
+    96.0
+   ],
+   "lod_scene": "res://world/chunks/c_0_2_lod.tscn",
+   "lod_radius": 200,
+   "cost": 40
+  },
+  {
+   "id": "c_0_3",
+   "scene": "res://world/chunks/c_0_3.tscn",
+   "center": [
+    16.0,
+    0,
+    112.0
+   ],
+   "aabb": [
+    0.0,
+    0,
+    96.0,
+    32.0,
+    2,
+    128.0
+   ],
+   "lod_scene": "res://world/chunks/c_0_3_lod.tscn",
+   "lod_radius": 200,
+   "cost": 40
+  },
+  {
+   "id": "c_1_0",
+   "scene": "res://world/chunks/c_1_0.tscn",
+   "center": [
+    48.0,
+    0,
+    16.0
+   ],
+   "aabb": [
+    32.0,
+    0,
+    0.0,
+    64.0,
+    2,
+    32.0
+   ],
+   "lod_scene": "res://world/chunks/c_1_0_lod.tscn",
+   "lod_radius": 200,
+   "cost": 40
+  },
+  {
+   "id": "c_1_1",
+   "scene": "res://world/chunks/c_1_1.tscn",
+   "center": [
+    48.0,
+    0,
+    48.0
+   ],
+   "aabb": [
+    32.0,
+    0,
+    32.0,
+    64.0,
+    2,
+    64.0
+   ],
+   "lod_scene": "res://world/chunks/c_1_1_lod.tscn",
+   "lod_radius": 200,
+   "cost": 40
+  },
+  {
+   "id": "c_1_2",
+   "scene": "res://world/chunks/c_1_2.tscn",
+   "center": [
+    48.0,
+    0,
+    80.0
+   ],
+   "aabb": [
+    32.0,
+    0,
+    64.0,
+    64.0,
+    2,
+    96.0
+   ],
+   "lod_scene": "res://world/chunks/c_1_2_lod.tscn",
+   "lod_radius": 200,
+   "cost": 40
+  },
+  {
+   "id": "c_1_3",
+   "scene": "res://world/chunks/c_1_3.tscn",
+   "center": [
+    48.0,
+    0,
+    112.0
+   ],
+   "aabb": [
+    32.0,
+    0,
+    96.0,
+    64.0,
+    2,
+    128.0
+   ],
+   "lod_scene": "res://world/chunks/c_1_3_lod.tscn",
+   "lod_radius": 200,
+   "cost": 40
+  },
+  {
+   "id": "c_2_0",
+   "scene": "res://world/chunks/c_2_0.tscn",
+   "center": [
+    80.0,
+    0,
+    16.0
+   ],
+   "aabb": [
+    64.0,
+    0,
+    0.0,
+    96.0,
+    2,
+    32.0
+   ],
+   "lod_scene": "res://world/chunks/c_2_0_lod.tscn",
+   "lod_radius": 200,
+   "cost": 40
+  },
+  {
+   "id": "c_2_1",
+   "scene": "res://world/chunks/c_2_1.tscn",
+   "center": [
+    80.0,
+    0,
+    48.0
+   ],
+   "aabb": [
+    64.0,
+    0,
+    32.0,
+    96.0,
+    2,
+    64.0
+   ],
+   "lod_scene": "res://world/chunks/c_2_1_lod.tscn",
+   "lod_radius": 200,
+   "cost": 40
+  },
+  {
+   "id": "c_2_2",
+   "scene": "res://world/chunks/c_2_2.tscn",
+   "center": [
+    80.0,
+    0,
+    80.0
+   ],
+   "aabb": [
+    64.0,
+    0,
+    64.0,
+    96.0,
+    2,
+    96.0
+   ],
+   "lod_scene": "res://world/chunks/c_2_2_lod.tscn",
+   "lod_radius": 200,
+   "cost": 40
+  },
+  {
+   "id": "c_2_3",
+   "scene": "res://world/chunks/c_2_3.tscn",
+   "center": [
+    80.0,
+    0,
+    112.0
+   ],
+   "aabb": [
+    64.0,
+    0,
+    96.0,
+    96.0,
+    2,
+    128.0
+   ],
+   "lod_scene": "res://world/chunks/c_2_3_lod.tscn",
+   "lod_radius": 200,
+   "cost": 40
+  },
+  {
+   "id": "c_3_0",
+   "scene": "res://world/chunks/c_3_0.tscn",
+   "center": [
+    112.0,
+    0,
+    16.0
+   ],
+   "aabb": [
+    96.0,
+    0,
+    0.0,
+    128.0,
+    2,
+    32.0
+   ],
+   "lod_scene": "res://world/chunks/c_3_0_lod.tscn",
+   "lod_radius": 200,
+   "cost": 40
+  },
+  {
+   "id": "c_3_1",
+   "scene": "res://world/chunks/c_3_1.tscn",
+   "center": [
+    112.0,
+    0,
+    48.0
+   ],
+   "aabb": [
+    96.0,
+    0,
+    32.0,
+    128.0,
+    2,
+    64.0
+   ],
+   "lod_scene": "res://world/chunks/c_3_1_lod.tscn",
+   "lod_radius": 200,
+   "cost": 40
+  },
+  {
+   "id": "c_3_2",
+   "scene": "res://world/chunks/c_3_2.tscn",
+   "center": [
+    112.0,
+    0,
+    80.0
+   ],
+   "aabb": [
+    96.0,
+    0,
+    64.0,
+    128.0,
+    2,
+    96.0
+   ],
+   "lod_scene": "res://world/chunks/c_3_2_lod.tscn",
+   "lod_radius": 200,
+   "cost": 40
+  },
+  {
+   "id": "c_3_3",
+   "scene": "res://world/chunks/c_3_3.tscn",
+   "center": [
+    112.0,
+    0,
+    112.0
+   ],
+   "aabb": [
+    96.0,
+    0,
+    96.0,
+    128.0,
+    2,
+    128.0
+   ],
+   "lod_scene": "res://world/chunks/c_3_3_lod.tscn",
+   "lod_radius": 200,
+   "cost": 40
+  }
+ ]
+}

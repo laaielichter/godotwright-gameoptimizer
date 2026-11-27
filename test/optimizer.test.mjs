@@ -1,0 +1,335 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { join } from "node:path";
+import { demo, call, read, snapshot } from "./helpers.mjs";
+import { ResourceFile } from "../src/godot/tscn.mjs";
+import { Project } from "../src/project.mjs";
+import { World, summarize } from "../src/world.mjs";
+import { handle } from "../src/mcp.mjs";
+import { TOOLS } from "../src/tools.mjs";
+import { diffShots } from "../src/bench.mjs";
+import { encodePng } from "../src/png.mjs";
+import { writeFileSync } from "node:fs";
+
+const SCENE = "world/world.tscn";
+const flat = (dir, scene = SCENE) => summarize(new World(new Project(dir)).flatten(scene));
+
+test("audit: world model, findings and a plan in the right order", () => {
+  const d = demo();
+  try {
+    const r = call("optimizer_audit", { project: d.dir, detail: "full" });
+    const s = r.scenes[0].summary;
+    assert.equal(r.scenes[0].scene, SCENE);
+    // 300 trees (trunk + crown), 200 rocks, fences, the ground, 40 houses of 3 meshes, 20 lamps of 2.
+    assert.equal(s.meshInstances, 600 + 200 + r.scenes[0].summary.meshInstances - 600 - 200);
+    assert.ok(s.meshInstances > 1000);
+    assert.equal(s.lights, 21);
+    assert.equal(s.shadowLights, 21);
+    assert.equal(s.bodies, 41);
+    assert.equal(s.instances, 60);
+    assert.ok(s.triangles > 100000);
+    const ids = r.findings.map((f) => f.id);
+    for (const id of ["world/repeated-mesh-nodes", "world/no-visibility-range", "world/lights-without-distance-fade", "world/monolithic-scene", "textures/uncompressed-3d", "textures/no-mipmaps-3d", "settings/recommended", "runtime/no-quality-tiers", "script/lookup-every-frame"]) assert.ok(ids.includes(id), `missing finding ${id}`);
+    assert.deepEqual(r.plan.steps.map((x) => x.args.fix), ["install", "settings", "textures", "lights", "ranges", "instancing", "partition"]);
+    for (const f of r.findings) assert.ok(f.title && f.detail && f.severity && f.category, f.id);
+    assert.ok(r.score < 50);
+  } finally {
+    d.cleanup();
+  }
+});
+
+test("cost map: hotspots sit where the content is, the route goes through them", () => {
+  const d = demo();
+  try {
+    const r = call("optimizer_costmap", { project: d.dir, cells: true });
+    assert.ok(r.hotspots.length >= 3);
+    const maxLoad = Math.max(...r.cells.map((c) => c.load));
+    assert.equal(r.hotspots[0].load, maxLoad);
+    assert.equal(r.route.stations.length, r.hotspots.length);
+    for (const st of r.route.stations) assert.equal(st.pos.length, 3);
+    assert.ok(r.picture.map.split("\n").length >= 4);
+    // A visibility range lowers what a far cell sees.
+    const before = r.totals.viewTrianglesMax;
+    call("optimizer_fix", { project: d.dir, fix: "ranges", pixels: 40 });
+    const after = call("optimizer_costmap", { project: d.dir }).totals.viewTrianglesMax;
+    assert.ok(after < before, `${after} < ${before}`);
+  } finally {
+    d.cleanup();
+  }
+});
+
+test("dry run writes nothing; undo restores every byte", () => {
+  const d = demo();
+  try {
+    const before = snapshot(d.dir);
+    for (const fix of ["settings", "textures", "lights", "ranges", "instancing"]) {
+      const r = call("optimizer_fix", { project: d.dir, fix, dry_run: true });
+      assert.equal(r.dry_run, true);
+    }
+    assert.deepEqual(snapshot(d.dir), before);
+    for (const fix of ["install", "settings", "textures", "lights", "ranges", "instancing", "partition"]) {
+      const r = call("optimizer_fix", { project: d.dir, fix });
+      assert.ok(r.journal, `${fix} made a journal entry`);
+    }
+    assert.notDeepEqual(snapshot(d.dir), before);
+    const list = call("optimizer_undo", { project: d.dir, list: true }).journal;
+    assert.equal(list.length, 7);
+    // Undoing an early entry while later ones changed the same files is refused.
+    assert.equal(call("optimizer_undo", { project: d.dir, id: list.find((e) => e.fix === "ranges").id }).undone, null);
+    for (let i = 0; i < 7; i++) assert.ok(call("optimizer_undo", { project: d.dir }).undone);
+    assert.deepEqual(snapshot(d.dir), before);
+    assert.equal(call("optimizer_undo", { project: d.dir }).undone, null);
+  } finally {
+    d.cleanup();
+  }
+});
+
+test("instancing: every merged node becomes one instance at the same place", () => {
+  const d = demo();
+  try {
+    const p = new Project(d.dir);
+    const world0 = new World(p).flatten(SCENE);
+    const trunks = world0.objects.filter((o) => o.kind === "mesh" && o.meshKey === `${SCENE}::trunk`);
+    const s0 = summarize(world0);
+    const r = call("optimizer_fix", { project: d.dir, fix: "instancing", cell_size: 64 });
+    assert.ok(r.result.merged > 600);
+    const s1 = flat(d.dir);
+    assert.equal(s1.meshInstances + s1.multimeshInstances, s0.meshInstances, "no object lost or added");
+    assert.equal(s1.meshInstances, s0.meshInstances - r.result.merged);
+    assert.equal(s1.multimeshes, r.result.multimeshes);
+    assert.equal(s1.triangles, s0.triangles);
+    // Positions: collect instance origins of all trunk MultiMeshes and compare with the original nodes.
+    const file = new ResourceFile(read(d.dir, SCENE));
+    const origins = [];
+    for (const n of file.nodes) {
+      if (n.attrs.type !== "MultiMeshInstance3D") continue;
+      const mm = file.sub.get(n.get("multimesh").args[0]);
+      if (mm.get("mesh").args[0] !== "trunk") continue;
+      const t = n.get("transform").args;
+      const buf = mm.get("buffer").args;
+      assert.equal(buf.length, mm.get("instance_count") * 12);
+      for (let i = 0; i < buf.length; i += 12) origins.push([buf[i + 3] + t[9], buf[i + 7] + t[10], buf[i + 11] + t[11]]);
+      assert.ok(n.get("visibility_range_end") > 0);
+    }
+    const key = (v) => v.map((x) => x.toFixed(2)).join(",");
+    const want = new Set(trunks.map((o) => key([o.transform[9], o.transform[10], o.transform[11]])));
+    const leftAsNodes = new World(new Project(d.dir)).flatten(SCENE).objects.filter((o) => o.kind === "mesh" && o.meshKey === `${SCENE}::trunk`);
+    assert.equal(origins.length + leftAsNodes.length, trunks.length);
+    for (const o of origins) assert.ok(want.has(key(o)), `instance at ${key(o)} was a node before`);
+    // The scene still parses and has no dangling resource ids.
+    for (const n of file.nodes) for (const prop of n.props) for (const m of prop.raw.matchAll(/SubResource\("([^"]+)"\)/g)) assert.ok(file.sub.has(m[1]));
+  } finally {
+    d.cleanup();
+  }
+});
+
+test("instancing leaves nodes alone that something refers to", () => {
+  const d = demo();
+  try {
+    let text = read(d.dir, SCENE);
+    text = text.replace('[node name="Trunk00000" type="MeshInstance3D" parent="Forest"]', '[node name="Trunk00000" type="MeshInstance3D" parent="Forest" groups=["special"]]');
+    text = text.replace('[node name="Trunk00001" type="MeshInstance3D" parent="Forest"]\n', '[node name="Trunk00001" type="MeshInstance3D" parent="Forest"]\nscript = ExtResource("day")\n');
+    text += '\n[connection signal="visibility_changed" from="Forest/Trunk00002" to="." method="_on"]\n';
+    writeFileSync(join(d.dir, SCENE), text);
+    call("optimizer_fix", { project: d.dir, fix: "instancing" });
+    const after = read(d.dir, SCENE);
+    for (const name of ["Trunk00000", "Trunk00001", "Trunk00002"]) assert.ok(after.includes(`[node name="${name}"`), `${name} kept`);
+    assert.ok((after.match(/\[node name="Trunk\d+"/g) ?? []).length < 40, "the other trunks were merged");
+  } finally {
+    d.cleanup();
+  }
+});
+
+test("ranges and lights: properties land in the scene that owns the node", () => {
+  const d = demo();
+  try {
+    const r = call("optimizer_fix", { project: d.dir, fix: "ranges" });
+    assert.ok(r.result.ranges_set > 500);
+    assert.ok(r.result.shadows_off > 10);
+    assert.match(read(d.dir, "world/house.tscn"), /\[node name="Chimney"[^\[]*visibility_range_end = \d+/);
+    const world = new World(new Project(d.dir)).flatten(SCENE);
+    const pebble = world.objects.find((o) => o.path.startsWith("Rocks/Pebble"));
+    const crown = world.objects.find((o) => o.path.startsWith("Forest/Crown"));
+    assert.ok(pebble.visEnd > 0 && crown.visEnd > pebble.visEnd * 5, "big things are seen from further");
+    assert.equal(pebble.castShadow, false);
+    assert.equal(crown.castShadow, true);
+    const l = call("optimizer_fix", { project: d.dir, fix: "lights", paraboloid: true });
+    assert.equal(l.result.lights_faded, 1); // one light node, in lamp.tscn, placed 20 times
+    assert.match(read(d.dir, "world/lamp.tscn"), /distance_fade_enabled = true\ndistance_fade_begin = 144/);
+    assert.match(read(d.dir, "world/lamp.tscn"), /omni_shadow_mode = 0/);
+    // Running a fix twice changes nothing more.
+    assert.equal(call("optimizer_fix", { project: d.dir, fix: "lights", paraboloid: true }).files_changed.length, 0);
+    assert.equal(call("optimizer_fix", { project: d.dir, fix: "ranges" }).files_changed.length, 0);
+  } finally {
+    d.cleanup();
+  }
+});
+
+test("textures and settings fixes", () => {
+  const d = demo();
+  try {
+    const t = call("optimizer_fix", { project: d.dir, fix: "textures" });
+    assert.equal(t.result.textures, 7);
+    assert.ok(t.result.vram_mb_after < t.result.vram_mb_before);
+    const imp = read(d.dir, "textures/bark.png.import");
+    assert.match(imp, /compress\/mode=2/);
+    assert.match(imp, /mipmaps\/generate=true/);
+    assert.match(imp, /detect_3d\/compress_to=0/);
+    assert.match(imp, /^\[remap\]\n\nimporter="texture"/);
+    assert.match(read(d.dir, "project.godot"), /textures\/vram_compression\/import_s3tc_bptc=true/);
+    const s = call("optimizer_fix", { project: d.dir, fix: "settings" });
+    assert.ok(s.result.settings.some((x) => x.setting === "rendering/occlusion_culling/use_occlusion_culling"));
+    const again = call("optimizer_audit", { project: d.dir }).findings.map((f) => f.id);
+    for (const id of ["textures/uncompressed-3d", "textures/no-mipmaps-3d", "settings/recommended"]) assert.ok(!again.includes(id), `${id} is settled`);
+  } finally {
+    d.cleanup();
+  }
+});
+
+test("partition: every object ends up in exactly one chunk, chunks are valid scenes", () => {
+  const d = demo();
+  try {
+    assert.match(call("optimizer_fix", { project: d.dir, fix: "partition" }).result.error, /install/);
+    call("optimizer_fix", { project: d.dir, fix: "install" });
+    const s0 = flat(d.dir);
+    const names0 = new ResourceFile(read(d.dir, SCENE)).nodes.filter((n) => ["Forest", "Rocks", "Town", "Fences"].includes(n.attrs.parent)).map((n) => `${n.attrs.parent}/${n.attrs.name}`);
+    const r = call("optimizer_fix", { project: d.dir, fix: "partition", cell_size: 128 });
+    assert.equal(r.result.partitioned, 4);
+    assert.equal(r.result.nodes_moved, names0.length);
+    const world = new ResourceFile(read(d.dir, SCENE));
+    for (const c of ["Forest", "Rocks", "Town", "Fences"]) {
+      const node = world.nodes.find((n) => n.attrs.name === c);
+      assert.equal(node.attrs.type, "Node3D");
+      assert.ok(world.ext.get(node.get("script").args[0]).attrs.path.endsWith("go_streamer.gd"));
+      assert.equal(world.nodes.filter((n) => n.attrs.parent === c).length, 0);
+    }
+    for (const kept of ["Environment", "Sun", "Camera", "Ground", "DayCycle"]) assert.ok(world.nodes.some((n) => n.attrs.name === kept), `${kept} stays in the world scene`);
+    assert.ok(!world.sub.has("trunk"), "resources only the chunks use left the world scene");
+    // Chunks: count nodes, check every resource reference resolves, sum the model.
+    const seen = new Map();
+    let meshes = 0;
+    let lights = 0;
+    const p = new Project(d.dir);
+    for (const c of r.result.containers) {
+      const manifest = JSON.parse(read(d.dir, c.manifest));
+      assert.equal(manifest.version, 1);
+      assert.ok(manifest.unload_radius > manifest.load_radius);
+      for (const ch of manifest.chunks) {
+        const path = ch.scene.slice(6);
+        assert.ok(existsSync(join(d.dir, path)), path);
+        const f = new ResourceFile(read(d.dir, path));
+        assert.equal(f.nodes[0].attrs.parent, undefined);
+        for (const s of f.sections) for (const prop of s.props) {
+          for (const m of prop.raw.matchAll(/ExtResource\("([^"]+)"\)/g)) assert.ok(f.ext.has(m[1]), `${path}: ext ${m[1]}`);
+          for (const m of prop.raw.matchAll(/SubResource\("([^"]+)"\)/g)) assert.ok(f.sub.has(m[1]), `${path}: sub ${m[1]}`);
+        }
+        for (const e of f.ext.values()) assert.ok(p.exists(e.attrs.path), `${path}: ${e.attrs.path} exists`);
+        for (const n of f.nodes.slice(1)) {
+          if (n.attrs.parent !== ".") continue;
+          const key = `${c.container}/${n.attrs.name}`;
+          assert.ok(!seen.has(key), `${key} is in one chunk only`);
+          seen.set(key, path);
+        }
+        const sum = flat(d.dir, path);
+        meshes += sum.meshInstances;
+        lights += sum.lights;
+        assert.equal(ch.aabb.length, 6);
+        if (ch.layer === "far") assert.ok(ch.load_radius > manifest.load_radius);
+      }
+    }
+    assert.deepEqual([...seen.keys()].sort(), [...names0].sort());
+    const s1 = flat(d.dir);
+    assert.equal(meshes + s1.meshInstances, s0.meshInstances, "all meshes are in the chunks or still in the world");
+    assert.equal(lights + s1.lights, s0.lights);
+    // Shared resources are written once.
+    const shared = readdirSync(join(d.dir, "world/world_chunks/shared"));
+    assert.deepEqual(shared.sort(), ["crown.tres", "fencemesh.tres", "pebble.tres", "rockmesh.tres", "trunk.tres"]);
+    assert.match(read(d.dir, "world/world_chunks/shared/trunk.tres"), /^\[gd_resource type="CylinderMesh"/);
+  } finally {
+    d.cleanup();
+  }
+});
+
+test("partition after instancing: MultiMeshes go into chunks, the meshes they share stay shared", () => {
+  const d = demo();
+  try {
+    for (const fix of ["install", "ranges", "instancing"]) call("optimizer_fix", { project: d.dir, fix });
+    const s0 = flat(d.dir);
+    const r = call("optimizer_fix", { project: d.dir, fix: "partition" });
+    let instances = 0;
+    for (const c of r.result.containers) {
+      for (const ch of JSON.parse(read(d.dir, c.manifest)).chunks) instances += flat(d.dir, ch.scene.slice(6)).multimeshInstances;
+    }
+    assert.equal(instances + flat(d.dir).multimeshInstances, s0.multimeshInstances);
+    const shared = readdirSync(join(d.dir, "world/world_chunks/shared"));
+    assert.ok(shared.includes("trunk.tres") && shared.length <= 6, `only meshes are shared: ${shared}`);
+  } finally {
+    d.cleanup();
+  }
+});
+
+test("install: files, autoloads, and a tuned tier file is kept", () => {
+  const d = demo();
+  try {
+    const r = call("optimizer_fix", { project: d.dir, fix: "install" });
+    assert.deepEqual(r.result.autoloads_added, ["GOQuality", "GOGovernor", "GOSpawnQueue", "GOProbe"]);
+    for (const f of ["go_quality.gd", "go_governor.gd", "go_streamer.gd", "go_spawn_queue.gd", "go_prewarm.gd", "go_probe.gd", "go_lod.gd", "quality_tiers.json", "plugin.cfg"]) assert.ok(existsSync(join(d.dir, "addons/gameoptimizer", f)), f);
+    assert.match(read(d.dir, "project.godot"), /\[autoload\]\n\nGOQuality="\*res:\/\/addons\/gameoptimizer\/go_quality.gd"/);
+    const tiers = JSON.parse(read(d.dir, "addons/gameoptimizer/quality_tiers.json"));
+    writeFileSync(join(d.dir, "addons/gameoptimizer/quality_tiers.json"), JSON.stringify({ ...tiers, mine: true }));
+    const again = call("optimizer_fix", { project: d.dir, fix: "install" });
+    assert.equal(again.result.files_written, 0);
+    assert.equal(JSON.parse(read(d.dir, "addons/gameoptimizer/quality_tiers.json")).mine, true);
+  } finally {
+    d.cleanup();
+  }
+});
+
+test("screenshot comparison", () => {
+  const d = demo();
+  try {
+    const px = (r, g, b) => {
+      const a = new Uint8Array(32 * 32 * 4);
+      for (let i = 0; i < a.length; i += 4) a.set([r, g, b, 255], i);
+      return a;
+    };
+    const a = px(100, 100, 100);
+    const b = px(104, 100, 100);
+    const c = px(100, 100, 100);
+    for (let i = 0; i < 32 * 8 * 4; i += 4) c.set([255, 0, 0, 255], i);
+    for (const [n, data] of [["a", a], ["b", b], ["c", c]]) writeFileSync(join(d.dir, `${n}.png`), encodePng(32, 32, data));
+    assert.equal(diffShots(join(d.dir, "a.png"), join(d.dir, "b.png")).changed_percent, 0);
+    assert.equal(diffShots(join(d.dir, "a.png"), join(d.dir, "c.png")).changed_percent, 25);
+  } finally {
+    d.cleanup();
+  }
+});
+
+test("MCP: initialize, list, call, errors", async () => {
+  const init = await handle({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-06-18" } });
+  assert.equal(init.result.serverInfo.name, "godotwright-gameoptimizer");
+  assert.equal(await handle({ jsonrpc: "2.0", method: "notifications/initialized" }), null);
+  const list = await handle({ jsonrpc: "2.0", id: 2, method: "tools/list" });
+  assert.equal(list.result.tools.length, TOOLS.length);
+  for (const t of list.result.tools) {
+    assert.match(t.name, /^optimizer_[a-z]+$/);
+    assert.ok(t.description.length > 60, t.name);
+    assert.equal(t.inputSchema.type, "object");
+    for (const [k, v] of Object.entries(t.inputSchema.properties)) assert.ok(v.type, `${t.name}.${k} has a type`);
+  }
+  const d = demo();
+  try {
+    const res = await handle({ jsonrpc: "2.0", id: 3, method: "tools/call", params: { name: "optimizer_audit", arguments: { project: d.dir } } });
+    assert.ok(res.result.structuredContent.findings.length > 5);
+    assert.equal(JSON.parse(res.result.content[0].text).project.name, "Open World Demo");
+  } finally {
+    d.cleanup();
+  }
+  const bad = await handle({ jsonrpc: "2.0", id: 4, method: "tools/call", params: { name: "optimizer_audit", arguments: { project: "/nonexistent/place" } } });
+  assert.equal(bad.result.isError, true);
+  assert.match(bad.result.content[0].text, /project\.godot/);
+  assert.equal((await handle({ jsonrpc: "2.0", id: 5, method: "nope" })).error.code, -32601);
+  const explain = await handle({ jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "optimizer_explain", arguments: { topic: "world/repeated-mesh-nodes" } } });
+  assert.match(explain.result.structuredContent.title, /Instancing/);
+});
