@@ -11,8 +11,9 @@ Start: `npx -y github:laaielichter/godotwright-gameoptimizer mcp` (MCP over stdi
 
 - optimizer_audit: findings with evidence and a plan of fixes. No Godot needed.
 - optimizer_costmap: predicted triangles and draw calls per world cell, hotspots, a benchmark route.
+- optimizer_census: run the game (project or .pck), count the live tree, findings for worlds built from code.
 - optimizer_textures: GPU memory per texture.
-- optimizer_fix: install | settings | textures | lods | lights | ranges | instancing | partition. dry_run supported.
+- optimizer_fix: install | policy | settings | textures | lods | lights | ranges | instancing | partition. dry_run supported.
 - optimizer_undo: take a fix back; every fix is journaled.
 - optimizer_bench: run the game in Godot, measure frame times, hitches, draw calls, memory, screenshots.
 - optimizer_compare: before and after, per metric and per screenshot, with a verdict.

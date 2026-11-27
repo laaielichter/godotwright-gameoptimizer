@@ -14,6 +14,7 @@ Usage: gameoptimizer <command> [project] [options]
   audit [project]              what holds the game back, and the plan to fix it       (no Godot needed)
   costmap [project]            predicted rendering cost across the world, hotspots    (no Godot needed)
   textures [project]           texture memory report                                  (no Godot needed)
+  census [project]             count what the running game really holds (--pack game.pck for an exported game)
   fix <name> [project]         apply one fix: ${Object.keys(FIXES).join(", ")}
   undo [id] [project]          take a fix back (--list shows the journal)
   bench [project]              run the game and measure it (--label baseline first)
@@ -29,7 +30,7 @@ Options are the tool's inputs: --scene world/world.tscn --dry-run --cell-size 64
   --project DIR   the project folder (also accepted as a positional argument)
 `;
 
-const COMMANDS = { audit: "optimizer_audit", costmap: "optimizer_costmap", textures: "optimizer_textures", fix: "optimizer_fix", undo: "optimizer_undo", bench: "optimizer_bench", compare: "optimizer_compare", import: "optimizer_import", explain: "optimizer_explain", demo: "optimizer_demo" };
+const COMMANDS = { census: "optimizer_census", audit: "optimizer_audit", costmap: "optimizer_costmap", textures: "optimizer_textures", fix: "optimizer_fix", undo: "optimizer_undo", bench: "optimizer_bench", compare: "optimizer_compare", import: "optimizer_import", explain: "optimizer_explain", demo: "optimizer_demo" };
 const POSITIONAL = { fix: ["fix", "project"], undo: ["id", "project"], compare: ["run", "project"], explain: ["topic"], demo: ["dir"] };
 
 function parseArgs(argv, tool, command) {
@@ -102,6 +103,20 @@ function text(command, r) {
     L.push(`${r.run} against ${r.baseline}: ${r.verdict}`, `performance: ${r.performance}   picture: ${r.visual}${r.worst_picture_change_percent != null ? ` (worst station ${r.worst_picture_change_percent}% of pixels changed)` : ""}`, "");
     for (const m of r.metrics) L.push(`  ${m.metric.padEnd(26)} ${String(m.before).padStart(12)} -> ${String(m.after).padStart(12)}  ${(m.change_percent > 0 ? "+" : "") + m.change_percent}%  ${m.verdict}`);
     for (const w of r.warnings) L.push("", `note: ${w}`);
+    return L.join("\n");
+  }
+  if (command === "census") {
+    const t = r.totals;
+    L.push(`${r.scene}  (Godot ${r.engine}, ${r.renderer}${r.headless ? ", headless" : ""}, counted after ${r.seconds} s)`);
+    L.push(`  ${t.nodes} nodes (${t.processing} process, ${t.physics_processing} physics-process), ${t.mesh_instances} mesh instances, ${Math.round(t.triangles / 1000)}k triangles, ${t.unique_meshes} meshes, ${t.unique_materials} materials, ${t.multimesh_instances} multimesh instances, ${t.textures_mb} MB textures`, "");
+    for (const f of r.findings) {
+      L.push(`${sev[f.severity]} ${f.title}   [${f.id}]`, `       ${f.detail}`);
+      for (const e of f.evidence ?? []) L.push(`       - ${Object.entries(e).filter(([, v]) => v !== undefined).map(([k, v]) => `${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`).join(", ")}`);
+      if (f.fix) L.push(`       fix: gameoptimizer fix ${f.fix.fix}`);
+      L.push("");
+    }
+    if (r.built_by.length) L.push("Built by (nodes below the nearest script):", ...r.built_by.map((x) => `  ${String(x.count).padStart(7)}  ${x.name}`));
+    for (const e of r.errors) L.push(`error: ${e}`);
     return L.join("\n");
   }
   if (command === "explain" && r.text) return `${r.title}\n\n${r.text}\n\nCheck: ${r.check}`;

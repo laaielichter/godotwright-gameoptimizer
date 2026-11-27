@@ -387,3 +387,55 @@ test("a MultiMesh has the box of its instances, so a forest cell is streamed as 
     d.cleanup();
   }
 });
+
+test("census findings: a world built from code", async () => {
+  const { analyzeCensus } = await import("../src/census.mjs");
+  const quiet = analyzeCensus({ nodes: 800, processing: 12, physics_processing: 3, camera_far: 4000, geometry: { mesh_instances: 300, unique_meshes: 40, meshes_used_once: 20, unique_materials: 12, materials_used_once: 4, small_without_range: 10, tiny_shadow_casters: 0, groups: [{ mesh: "res://a.tres", count: 30, triangles_each: 100, made_by: "" }] }, lights: { positional_without_fade: 2, shadowed: 1 }, textures: { mb: 200, uncompressed_large: 1, uncompressed_large_mb: 8, made_at_run_time_mb: 0, largest: [] }, viewports: [], canvas_items: 500, extent: { farthest_from_origin: 900 }, physics: { trimesh_faces: 1000, shapes: {} }, scripts: [], made_by: [] });
+  assert.deepEqual(quiet, [], "a small, tidy game has no findings");
+  const loud = analyzeCensus({
+    nodes: 91000, processing: 5200, physics_processing: 4100, camera_far: 12000,
+    geometry: { mesh_instances: 60000, unique_meshes: 9000, meshes_used_once: 7000, unique_materials: 6200, materials_used_once: 5800, small_without_range: 41000, small_without_range_triangles: 9_000_000, tiny_shadow_casters: 12000, groups: [{ mesh: "<BoxMesh made at run time>", count: 21000, triangles_each: 12, made_by: "res://world/chunk_world.gd", example: "/root/W/a" }, { mesh: "<ArrayMesh made at run time>", count: 1, triangles_each: 5000, made_by: "res://world/terrain.gd", example: "/root/W/t" }] },
+    lights: { positional_without_fade: 300, shadowed: 120, examples: [{ path: "/root/W/L", distance_fade: false }] },
+    textures: { mb: 7000, uncompressed_large: 700, uncompressed_large_mb: 5100, made_at_run_time: 200, made_at_run_time_mb: 1900, largest: [{ path: "<made at run time>", size: [4096, 4096], compressed: false, mb: 64 }] },
+    viewports: [{ path: "/root/A", size: [2048, 2048], update_mode: 4 }, { path: "/root/B", size: [1024, 1024], update_mode: 3 }],
+    canvas_items: 524000, controls: 900, extent: { farthest_from_origin: 28000 }, physics: { trimesh_faces: 2_000_000, shapes: {} },
+    scripts: [{ script: "res://train.gd", count: 50, processing: 50, physics_processing: 50 }], made_by: [{ name: "res://world/chunk_world.gd", count: 70000 }],
+  });
+  const ids = loud.map((f) => f.id);
+  for (const id of ["live/repeated-mesh-nodes", "live/mesh-per-object", "live/material-per-object", "live/no-visibility-range", "live/tiny-shadow-casters", "live/lights-without-distance-fade", "live/uncompressed-textures", "live/many-processing-nodes", "live/large-tree", "live/subviewports-always-updating", "live/many-canvas-items", "live/far-from-origin", "live/trimesh-colliders"]) assert.ok(ids.includes(id), id);
+  assert.equal(loud.find((f) => f.id === "live/no-visibility-range").fix.fix, "policy");
+  assert.match(loud.find((f) => f.id === "live/uncompressed-textures").detail, /made at run time/);
+  assert.equal(loud.find((f) => f.id === "live/repeated-mesh-nodes").metric.scripts[0], "res://world/chunk_world.gd");
+  assert.equal(loud[0].severity, "high");
+});
+
+test("policy fix: file, settings, autoload; undo takes it back", () => {
+  const d = demo({ procedural: true });
+  try {
+    const before = snapshot(d.dir);
+    const r = call("optimizer_fix", { project: d.dir, fix: "policy", pixels: 8 });
+    assert.equal(r.result.autoload_added, true);
+    assert.equal(JSON.parse(read(d.dir, "addons/gameoptimizer/world_policy.json")).pixels, 8);
+    assert.match(read(d.dir, "project.godot"), /GOWorldPolicy="\*res:\/\/addons\/gameoptimizer\/go_world_policy.gd"/);
+    assert.equal(call("optimizer_fix", { project: d.dir, fix: "policy", pixels: 8 }).files_changed.length, 0);
+    call("optimizer_undo", { project: d.dir });
+    assert.deepEqual(snapshot(d.dir), before);
+  } finally {
+    d.cleanup();
+  }
+});
+
+test("script rules from large code-built games", async () => {
+  const d = demo({ procedural: true });
+  try {
+    writeFileSync(join(d.dir, "world/bad.gd"), `extends Node\nvar t := 0.0\nvar label: Label\n\nfunc _process(delta: float) -> void:\n\tt += delta\n\tlabel.text = str(t)\n\tif int(t * 2.0) % 4 == 0:\n\t\tvar sun := get_tree().root.find_child("Sun", true, false)\n\tif Engine.get_frames_drawn() % 30 == 0:\n\t\tpass\n\nfunc a() -> void:\n\tvar w := get_tree().root.find_children("*", "Light3D")\n\tvar e := get_tree().current_scene.find_child("Weather")\n`);
+    const ids = new Map(call("optimizer_audit", { project: d.dir, detail: "full" }).findings.map((f) => [f.id, f]));
+    assert.equal(ids.get("script/time-window-modulo").metric.places, 1, "a frame counter modulo is fine, a time window is not");
+    assert.ok(ids.has("script/text-set-every-frame"));
+    assert.equal(ids.get("script/whole-tree-search").severity, "high");
+    assert.equal(ids.get("script/whole-tree-search").metric.places, 3);
+    assert.ok(ids.has("script/mesh-node-per-object") && ids.has("script/material-per-object"), "the builder script is found");
+  } finally {
+    d.cleanup();
+  }
+});

@@ -20,6 +20,20 @@ commands through the CLI: `npx -y github:laaielichter/godotwright-gameoptimizer 
 5. For findings without a fix, call `optimizer_explain {topic: "<finding id>"}` and change the code or content
    yourself. Re-run the audit: the finding should be gone.
 
+## Worlds built from code, and games that are a .pck
+
+When `optimizer_audit` finds no world scene (few or no mesh instances) but the game clearly has a world, the
+world is built by scripts. Then:
+
+1. `optimizer_census {project}` or `{pack: "game.pck"}`; give a large world more `seconds`. Use `headless: true`
+   on a machine without a GPU.
+2. `optimizer_fix {fix: "policy"}` when the census reports objects without a range, tiny shadow casters or lights
+   without a fade. Run the census again with another `label`: those counts should be near zero.
+3. For `live/repeated-mesh-nodes`, `live/mesh-per-object` and `live/material-per-object`, open the script named in
+   `made_by` and change the loop: share the mesh and the material, fill a MultiMesh per world cell.
+4. For `live/uncompressed-textures` with run-time textures: bake them to compressed files; `Image.compress` does
+   not exist in an exported game.
+
 ## Choosing parameters
 
 - `pixels` (ranges, instancing, partition): 6 is invisible at 1080p. 12 to 20 suits low-end targets; prefer the

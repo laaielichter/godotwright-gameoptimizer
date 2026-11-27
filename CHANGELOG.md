@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0
+
+For worlds that are built from code, and games that only exist as a pack.
+
+- `optimizer_census`: starts a scene of a project or a `.pck`, lets the world build and counts the live tree: nodes
+  by class, by script and by the script that created them, repeated meshes, a mesh or a material per object,
+  objects without a visibility range, textures and their GPU format, nodes that process every frame, SubViewports,
+  canvas items. Findings carry ids that start with `live/`.
+- `optimizer_fix policy` and `GOWorldPolicy`: a visibility range, shadow rule and distance fade for every mesh and
+  light that enters the tree at run time, within a time budget.
+- Script rules: whole-tree searches from the root, time tests that are true for a window of frames, label text set
+  every frame, textures made from images at run time.
+- `optimizer_demo` with `procedural`: the demo world built by a script.
+
 ## 0.1.0
 
 First release.

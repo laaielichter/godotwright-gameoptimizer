@@ -8,7 +8,8 @@ import { Transaction, undo, journalEntries } from "./journal.mjs";
 import { fixSettings, fixTextures, fixLods } from "./fix/settings.mjs";
 import { fixLights, fixRanges, fixInstancing } from "./fix/scene.mjs";
 import { fixPartition } from "./fix/partition.mjs";
-import { fixInstall } from "./fix/install.mjs";
+import { fixInstall, fixPolicy } from "./fix/install.mjs";
+import { census } from "./census.mjs";
 import { bench, compare, importProject, findGodot } from "./bench.mjs";
 import { textureInventory } from "./analyze/textures.mjs";
 import { writeDemoWorld } from "./demo.mjs";
@@ -37,6 +38,7 @@ function pickScene(project, scene) {
 
 const FIXES = {
   install: { run: (p, tx) => fixInstall(p, tx), needsScene: false, summary: "Installs addons/gameoptimizer (quality tiers, governor, streamer, spawn queue, prewarm, probe) and its autoloads." },
+  policy: { run: (p, tx, a) => fixPolicy(p, tx, { pixels: a.pixels ?? 6 }), needsScene: false, summary: "Culling rules for nodes that scripts create at run time (GOWorldPolicy)." },
   settings: {
     run: (p, tx) => {
       const a = audit(p, {});
@@ -119,7 +121,7 @@ export const TOOLS = [
     name: "optimizer_fix",
     title: "Apply one optimization",
     description:
-      "Applies one fix and records it in a journal so optimizer_undo can take it back. Fixes: install (runtime kit: quality tiers, adaptive governor, streamer, spawn queue, shader prewarm), settings (project settings), textures (VRAM compression and mipmaps for 3D textures), lods (mesh LODs for imported models), lights (distance fade), ranges (visibility ranges sized from each object, tiny shadow casters off), instancing (repeated meshes into one MultiMesh per world cell), partition (world scene into streamed chunks; needs install). Use dry_run first to see what would change. Order: as optimizer_audit's plan lists them; measure with optimizer_bench before and after.",
+      "Applies one fix and records it in a journal so optimizer_undo can take it back. Fixes: install (runtime kit: quality tiers, adaptive governor, streamer, spawn queue, shader prewarm), policy (for worlds built from code: every mesh and light that enters the tree at run time gets a visibility range from its size, no shadow when tiny, a distance fade), settings (project settings), textures (VRAM compression and mipmaps for 3D textures), lods (mesh LODs for imported models), lights (distance fade), ranges (visibility ranges sized from each object, tiny shadow casters off), instancing (repeated meshes into one MultiMesh per world cell), partition (world scene into streamed chunks; needs install). Use dry_run first to see what would change. Order: as optimizer_audit's plan lists them; measure with optimizer_bench before and after.",
     inputSchema: {
       type: "object",
       required: ["fix"],
@@ -240,6 +242,47 @@ export const TOOLS = [
     },
   },
   {
+    name: "optimizer_census",
+    title: "Count what a running game really holds",
+    description:
+      "For worlds that are built from code and for games that only exist as a .pck: starts a scene in Godot, gives it time to build, then walks the live tree. Returns nodes by class, by script and by the script that created them, which nodes process every frame, mesh instances grouped by mesh and material (repeats, a mesh or a material per object), objects without a visibility range, tiny shadow casters, lights, physics shapes, SubViewports, canvas items, textures in use with their GPU format (uncompressed, made at run time), and findings from all of that. optimizer_audit reads files; this reads the game. Needs Godot 4 (the editor binary also runs a .pck).",
+    inputSchema: {
+      type: "object",
+      properties: {
+        project: projectProp,
+        pack: { type: "string", description: "Path of an exported game's .pck, instead of a project folder." },
+        scene: { type: "string", description: "Scene to start (default: the main scene)." },
+        seconds: { type: "number", description: "How long the world gets to build before it is counted (default 20; a large streamed world needs more)." },
+        frames: { type: "number", description: "And at least this many frames (default 120)." },
+        headless: { type: "boolean", description: "No rendering: counts are the same, draw-call monitors are 0. Use it on machines without a GPU." },
+        label: { type: "string", description: "Name of the report (default census)." },
+        detail: { type: "string", enum: ["brief", "full"], description: "brief (default): findings and totals. full: also every table of the report." },
+        godot: { type: "string", description: "Path of the Godot 4 binary (default: $GODOT, then PATH)." },
+      },
+    },
+    annotations: { readOnlyHint: true },
+    async handler(a) {
+      const r = await census({ project: a.project, pack: a.pack, scene: a.scene, seconds: a.seconds, frames: a.frames, headless: a.headless, label: a.label, godot: a.godot });
+      const c = r.report;
+      const g = c.geometry;
+      const brief = {
+        scene: c.scene,
+        engine: c.engine,
+        renderer: c.renderer,
+        headless: c.headless,
+        seconds: c.seconds,
+        totals: { nodes: c.nodes, processing: c.processing, physics_processing: c.physics_processing, mesh_instances: g.mesh_instances, triangles: g.triangles, unique_meshes: g.unique_meshes, unique_materials: g.unique_materials, multimesh_instances: g.multimesh_instances, lights: c.lights.types, textures_mb: c.textures.mb, canvas_items: c.canvas_items },
+        monitors: c.monitors,
+        findings: r.findings,
+        built_by: (c.made_by ?? []).slice(0, 10),
+        errors: r.errors,
+        report_file: r.file,
+        next: r.findings.some((f) => f.fix?.fix === "policy") ? 'optimizer_fix {"fix": "policy"}, then optimizer_census again: the counts without a range should drop.' : "optimizer_explain with a finding id says what to change in the code.",
+      };
+      return a.detail === "full" ? { ...brief, report: c } : brief;
+    },
+  },
+  {
     name: "optimizer_textures",
     title: "Texture memory report",
     description: "Every texture with its size, import mode and estimated GPU memory, largest first, and the total. Use it to find what fills the VRAM budget.",
@@ -284,9 +327,9 @@ export const TOOLS = [
     name: "optimizer_demo",
     title: "Write the demo open world",
     description: "Writes a heavy open-world Godot project to a folder: a 2 km map with forests, villages and street lights, built the unoptimized way. A safe place to try the tools; the numbers in the README come from it.",
-    inputSchema: { type: "object", required: ["dir"], properties: { dir: { type: "string", description: "Folder to write the project to." }, trees: { type: "number" }, rocks: { type: "number" }, houses: { type: "number" }, lamps: { type: "number" }, fences: { type: "number" }, seed: { type: "number" }, extent: { type: "number", description: "Size of the map in metres (default 2000)." }, texture_size: { type: "number" }, force: { type: "boolean", description: "Overwrite an existing project there." } } },
+    inputSchema: { type: "object", required: ["dir"], properties: { dir: { type: "string", description: "Folder to write the project to." }, trees: { type: "number" }, rocks: { type: "number" }, houses: { type: "number" }, lamps: { type: "number" }, fences: { type: "number" }, seed: { type: "number" }, extent: { type: "number", description: "Size of the map in metres (default 2000)." }, texture_size: { type: "number" }, procedural: { type: "boolean", description: "Build the world from a script at run time instead of a scene file (try optimizer_census on it)." }, force: { type: "boolean", description: "Overwrite an existing project there." } } },
     handler(a) {
-      return writeDemoWorld(a.dir, { trees: a.trees, rocks: a.rocks, houses: a.houses, lamps: a.lamps, fences: a.fences, seed: a.seed, extent: a.extent, textureSize: a.texture_size, force: a.force });
+      return writeDemoWorld(a.dir, { trees: a.trees, rocks: a.rocks, houses: a.houses, lamps: a.lamps, fences: a.fences, seed: a.seed, extent: a.extent, textureSize: a.texture_size, force: a.force, procedural: a.procedural });
     },
   },
 ];
