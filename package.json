@@ -25,9 +25,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs",
-    "test:godot": "GO_TEST_GODOT=1 node --test test/*.test.mjs",
-    "check": "node --test test/*.test.mjs"
+    "test": "node --test test/core.test.mjs test/optimizer.test.mjs test/godot.test.mjs"
   },
   "repository": {
     "type": "git",
