@@ -49,15 +49,15 @@ export function analyzeWorld(flat, summary, map, project) {
     groups.sort((a, b) => b.count - a.count);
     add({
       id: "world/repeated-mesh-nodes",
-      severity: nodes >= 500 ? "high" : "medium",
-      category: "draw-calls",
+      severity: nodes >= 5000 ? "high" : "medium",
+      category: "scene-tree",
       title: `${fmt(nodes)} identical meshes are separate nodes (${groups.length} kinds)`,
       detail:
-        "Every MeshInstance3D is a node to instantiate, an instance to cull each frame and memory in the scene tree. Identical meshes with one material can be drawn as MultiMeshes. A single MultiMesh is culled as one box, so the fix makes one per world cell: far cells are still culled and get their own visibility range.",
+        "Every MeshInstance3D is a node to instantiate when the scene loads, an instance to cull each frame and memory in the scene tree. Forward+ already draws identical meshes in few draw calls, so this is not about draw calls: it is about node count, culling work and load time, and it is what makes chunks cheap to stream. A single MultiMesh is culled as one box, so the fix makes one per world cell, each with its own visibility range. Measure it: on a small world the per-cell draws can cost more than the nodes did.",
       evidence: groups.slice(0, 6).map((g) => ({ mesh: g.meshKey, count: g.count, triangles_each: g.triangles })),
       metric: { nodes, kinds: groups.length },
       fix: { fix: "instancing", scene },
-      gain: "fewer nodes and culled instances, faster scene load; draw calls drop where the renderer did not already batch",
+      gain: "fewer nodes and culled instances, faster scene load and chunk streaming",
       risk: "structural",
     });
   }
@@ -105,7 +105,7 @@ export function analyzeWorld(flat, summary, map, project) {
         evidence: examples,
         metric: { objects: small, triangles: smallTris },
         fix: { fix: "ranges", scene },
-        gain: `up to ${fmt(small)} draws and ${fmt(smallTris)} triangles less in wide views`,
+        gain: `up to ${fmt(small)} culled instances and ${fmt(smallTris)} triangles less in wide views`,
         risk: "visual-safe",
       });
     }

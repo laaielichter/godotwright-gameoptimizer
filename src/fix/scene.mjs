@@ -52,12 +52,15 @@ export function fixLights(project, tx, { scene, paraboloid = false, fadeFactor =
     const s = edits.node(o.scene, o.local);
     if (!s) continue;
     if (!o.distanceFade) {
-      // A light of range R lights a patch about 2R across: fade it out where that patch is a few dozen pixels.
-      const begin = Math.max(40, Math.round(o.range * fadeFactor));
+      // The shadow goes first: beyond a few times the light's range its detail is a handful of pixels, and the
+      // shadow map is what costs (six scene passes for a cube). The light itself stays on much longer, because
+      // a lit patch is seen from far at night.
+      const shadowEnd = Math.max(40, Math.round(o.range * fadeFactor));
+      const begin = Math.min(1500, Math.max(120, Math.round(o.range * fadeFactor * 4)));
       s.set("distance_fade_enabled", "true");
       s.set("distance_fade_begin", num(begin));
-      s.set("distance_fade_shadow", num(Math.round(begin * 0.6)));
-      s.set("distance_fade_length", num(Math.max(10, Math.round(begin * 0.25))));
+      s.set("distance_fade_shadow", num(shadowEnd));
+      s.set("distance_fade_length", num(Math.max(10, Math.round(begin * 0.2))));
       edits.touch(o.scene);
       faded++;
     }
@@ -120,7 +123,7 @@ const INSTANCING_PROPS = new Set(["transform", "mesh", "cast_shadow", "gi_mode",
  * Replaces groups of identical MeshInstance3D siblings by one MultiMeshInstance3D per world cell. Nodes with a
  * script, children, groups, a connection or a NodePath pointing at them are left alone.
  */
-export function fixInstancing(project, tx, { scene, cellSize, minCount = 12, minPerCell = 3, pixels = 6 } = {}) {
+export function fixInstancing(project, tx, { scene, cellSize, minCount = 12, minPerCell = 4, pixels = 6 } = {}) {
   const { flat } = flatOf(project, scene);
   const text = tx.writes.get(scene) ?? project.text(scene);
   const file = new ResourceFile(text);
@@ -137,8 +140,11 @@ export function fixInstancing(project, tx, { scene, cellSize, minCount = 12, min
   for (const m of text.matchAll(/NodePath\("([^"]*)"\)/g)) for (const seg of m[1].split(/[/:]/)) referenced.add(seg);
   let bounds = null;
   for (const o of flat.objects) if (o.kind === "mesh" && o.aabb) bounds = bounds ? [Math.min(bounds[0], o.aabb[0]), 0, Math.min(bounds[2], o.aabb[2]), Math.max(bounds[3], o.aabb[3]), 0, Math.max(bounds[5], o.aabb[5])] : [o.aabb[0], 0, o.aabb[2], o.aabb[3], 0, o.aabb[5]];
-  const cell = cellSize ?? Math.max(32, autoCellSize(bounds) / 2);
+  // Forward+ already batches identical meshes into a few draw calls, and every MultiMesh is a draw of its own:
+  // cells must be large enough that merging does not multiply draw calls.
+  const cell = cellSize ?? Math.max(64, autoCellSize(bounds));
   const groups = instancingGroups(flat, { minCount });
+  const usedNames = new Set(byPath.keys());
   const remove = new Set();
   const added = [];
   let merged = 0;
@@ -211,7 +217,11 @@ export function fixInstancing(project, tx, { scene, cellSize, minCount = 12, min
           props.visibility_range_end = num(Math.round(range + size * 0.71));
           props.visibility_range_end_margin = num(Math.max(2, Math.round(range * 0.08)));
         }
-        const node = makeSection("node", { name: `MM_${meshName}_${cx}_${cz}${scale > 1 ? `_x${scale}` : ""}`.replace(/-/g, "m"), type: "MultiMeshInstance3D", parent }, props);
+        // Sibling names must be unique: two groups can share a mesh (one casts shadows, one does not).
+        let name = `MM_${meshName}_${cx}_${cz}${scale > 1 ? `_x${scale}` : ""}`.replace(/-/g, "m");
+        for (let k = 2; usedNames.has(`${parent}/${name}`); k++) name = name.replace(/(_v\d+)?$/, `_v${k}`);
+        usedNames.add(`${parent}/${name}`);
+        const node = makeSection("node", { name, type: "MultiMeshInstance3D", parent }, props);
         node.after = list[0].s;
         added.push(node);
         nodesMade++;

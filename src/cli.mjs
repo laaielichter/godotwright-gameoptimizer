@@ -73,8 +73,8 @@ function text(command, r) {
     L.push(`${r.project.name || r.project.root}  (Godot ${r.project.engine ?? "?"}, ${r.project.renderer}, ${r.project.files} files, ${r.project.scripts} scripts)`);
     for (const s of r.scenes) {
       const m = s.summary;
-      L.push(`  ${s.scene}: ${m.nodes} nodes, ${m.meshInstances} mesh instances (${m.uniqueMeshes} unique), ${m.multimeshInstances} multimesh instances, ${Math.round(m.triangles / 1000)}k triangles, ${m.surfaces} surfaces, ${m.lights} lights (${m.shadowLights} shadowed), ${m.bodies} bodies${m.extent ? `, ${m.extent[0]} x ${m.extent[2]} m` : ""}`);
-      if (s.costmap.totals) L.push(`    worst view: ${Math.round(s.costmap.totals.viewTrianglesMax / 1000)}k triangles, ${s.costmap.totals.viewDrawsMax} draws (cells of ${s.costmap.cellSize} m)`);
+      L.push(`  ${s.scene}: ${m.nodes} nodes, ${m.meshInstances} mesh instances (${m.uniqueMeshes} unique), ${m.multimeshInstances} multimesh instances, ${Math.round(m.triangles / 1000)}k triangles, ${m.surfaces} surfaces in about ${m.batches} batches, ${m.lights} lights (${m.shadowLights} shadowed), ${m.bodies} bodies${m.extent ? `, ${m.extent[0]} x ${m.extent[2]} m` : ""}`);
+      if (s.costmap.totals) L.push(`    worst view: ${Math.round(s.costmap.totals.viewTrianglesMax / 1000)}k triangles, ${s.costmap.totals.viewDrawsMax} surfaces in range (cells of ${s.costmap.cellSize} m)`);
     }
     L.push(`  textures: ${r.textures.count}, about ${r.textures.vram_mb} MB of VRAM`);
     L.push(`  score ${r.score}/100   high ${r.counts.high}  medium ${r.counts.medium}  low ${r.counts.low}`, "");
@@ -87,15 +87,15 @@ function text(command, r) {
     }
     if (r.plan.steps.length) {
       L.push("Plan:");
-      for (const s of r.plan.steps) L.push(`  ${s.step}. ${s.title}\n     ${s.cli}   (${s.risk})`);
+      for (const s of r.plan.steps) L.push(`  ${s.step}. ${s.optional ? "(optional) " : ""}${s.title}\n     ${s.cli}   (${s.risk})`);
       L.push("", "Measure first: gameoptimizer bench --label baseline. After each step: bench --label <name>, compare <name>.");
     }
     return L.join("\n");
   }
   if (command === "costmap") {
     L.push(`${r.scene}: cells of ${r.cell_size} m (${r.columns} x ${r.rows}), view distance ${r.view_distance} m`);
-    L.push(`worst view ${Math.round(r.totals.viewTrianglesMax / 1000)}k triangles / ${r.totals.viewDrawsMax} draws; median ${Math.round(r.totals.viewTrianglesMedian / 1000)}k / ${r.totals.viewDrawsMedian}`, "", r.picture.map, "", "Hotspots:");
-    for (const h of r.hotspots) L.push(`  (${Math.round(h.center[0])}, ${Math.round(h.center[1])}): ${Math.round(h.viewTriangles / 1000)}k triangles, ${h.viewDraws} draws in view; ${h.objects} objects in the cell; load ${Math.round(h.load / 1000)}k`);
+    L.push(`worst view ${Math.round(r.totals.viewTrianglesMax / 1000)}k triangles / ${r.totals.viewDrawsMax} surfaces in range; median ${Math.round(r.totals.viewTrianglesMedian / 1000)}k / ${r.totals.viewDrawsMedian}`, "", r.picture.map, "", "Hotspots:");
+    for (const h of r.hotspots) L.push(`  (${Math.round(h.center[0])}, ${Math.round(h.center[1])}): ${Math.round(h.viewTriangles / 1000)}k triangles, ${h.viewDraws} surfaces in range; ${h.objects} objects in the cell; load ${Math.round(h.load / 1000)}k`);
     return L.join("\n");
   }
   if (command === "compare") {

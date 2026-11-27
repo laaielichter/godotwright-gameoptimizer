@@ -126,7 +126,8 @@ func _streamers() -> Array[Node]:
 	var stack: Array[Node] = [get_tree().root]
 	while not stack.is_empty():
 		var node: Node = stack.pop_back()
-		if node is GOStreamer:
+		# By its methods, not its class: the probe also runs in a project that has only this file.
+		if node.has_method("is_settled") and node.has_method("get_stats") and node.has_method("load_manifest"):
 			found.append(node)
 		else:
 			stack.append_array(node.get_children())
@@ -135,7 +136,7 @@ func _streamers() -> Array[Node]:
 
 func _streamers_settled() -> bool:
 	for node: Node in _streamers():
-		if not (node as GOStreamer).is_settled():
+		if not bool(node.call("is_settled")):
 			return false
 	return true
 
@@ -143,7 +144,7 @@ func _streamers_settled() -> bool:
 func _streamers_loading() -> int:
 	var total := 0
 	for node: Node in _streamers():
-		var stats := (node as GOStreamer).get_stats()
+		var stats: Dictionary = node.call("get_stats")
 		total += int(stats["loading"]) + int(stats["queued"])
 	return total
 
@@ -396,7 +397,7 @@ func _finish() -> void:
 		compiles_total += value
 	var streamers: Array[Dictionary] = []
 	for node: Node in _streamers():
-		var stats := (node as GOStreamer).get_stats()
+		var stats: Dictionary = node.call("get_stats")
 		stats["path"] = str(node.get_path())
 		streamers.append(stats)
 	var version := Engine.get_version_info()

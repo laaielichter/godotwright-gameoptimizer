@@ -117,6 +117,9 @@ test("instancing: every merged node becomes one instance at the same place", () 
     const leftAsNodes = new World(new Project(d.dir)).flatten(SCENE).objects.filter((o) => o.kind === "mesh" && o.meshKey === `${SCENE}::trunk`);
     assert.equal(origins.length + leftAsNodes.length, trunks.length);
     for (const o of origins) assert.ok(want.has(key(o)), `instance at ${key(o)} was a node before`);
+    // Sibling names are unique.
+    const names = file.nodes.map((n) => `${n.attrs.parent}/${n.attrs.name}`);
+    assert.equal(new Set(names).size, names.length);
     // The scene still parses and has no dangling resource ids.
     for (const n of file.nodes) for (const prop of n.props) for (const m of prop.raw.matchAll(/SubResource\("([^"]+)"\)/g)) assert.ok(file.sub.has(m[1]));
   } finally {
@@ -156,7 +159,7 @@ test("ranges and lights: properties land in the scene that owns the node", () =>
     assert.equal(crown.castShadow, true);
     const l = call("optimizer_fix", { project: d.dir, fix: "lights", paraboloid: true });
     assert.equal(l.result.lights_faded, 1); // one light node, in lamp.tscn, placed 20 times
-    assert.match(read(d.dir, "world/lamp.tscn"), /distance_fade_enabled = true\ndistance_fade_begin = 144/);
+    assert.match(read(d.dir, "world/lamp.tscn"), /distance_fade_enabled = true\ndistance_fade_begin = 576\ndistance_fade_shadow = 144/);
     assert.match(read(d.dir, "world/lamp.tscn"), /omni_shadow_mode = 0/);
     // Running a fix twice changes nothing more.
     assert.equal(call("optimizer_fix", { project: d.dir, fix: "lights", paraboloid: true }).files_changed.length, 0);
@@ -244,7 +247,39 @@ test("partition: every object ends up in exactly one chunk, chunks are valid sce
     assert.equal(lights + s1.lights, s0.lights);
     // Shared resources are written once.
     const shared = readdirSync(join(d.dir, "world/world_chunks/shared"));
-    assert.deepEqual(shared.sort(), ["crown.tres", "fencemesh.tres", "pebble.tres", "rockmesh.tres", "trunk.tres"]);
+    for (const f of ["crown.tres", "fencemesh.tres", "pebble.tres", "rockmesh.tres", "trunk.tres", "house__walls.tres", "house__roof.tres"]) assert.ok(shared.includes(f), f);
+    assert.ok(shared.length <= 10, `few shared files: ${shared}`);
+    // Stand-ins: meshes only, every reference resolves, and they stand for the large parts of their chunk.
+    let standIns = 0;
+    let standInInstances = 0;
+    for (const c of r.result.containers) {
+      for (const ch of JSON.parse(read(d.dir, c.manifest)).chunks) {
+        if (!ch.lod_scene) continue;
+        standIns++;
+        assert.ok(ch.lod_radius > 0);
+        const f = new ResourceFile(read(d.dir, ch.lod_scene.slice(6)));
+        for (const e of f.ext.values()) assert.ok(p.exists(e.attrs.path), `${ch.lod_scene}: ${e.attrs.path}`);
+        for (const n of f.nodes.slice(1)) {
+          assert.equal(n.attrs.type, "MultiMeshInstance3D");
+          const mm = f.sub.get(n.get("multimesh").args[0]);
+          assert.equal(mm.get("buffer").args.length, mm.get("instance_count") * 12);
+          standInInstances += mm.get("instance_count");
+        }
+      }
+    }
+    assert.equal(standIns, r.result.stand_ins);
+    assert.ok(standIns > 10);
+    // Trees (trunk and crown) and houses (walls and roof) are seen from far; pebbles and chimneys are not.
+    assert.ok(standInInstances >= 600 + 80, `${standInInstances} stand-in instances`);
+    // Houses stream as detail with a stand-in; lamps keep shining from far, so they are real far chunks.
+    const town = JSON.parse(read(d.dir, "world/world_chunks/Town.gostream.json")).chunks;
+    assert.ok(town.some((c) => c.layer === "far"), "lamps are in far chunks");
+    assert.ok(town.some((c) => c.lod_scene), "houses have stand-ins");
+    // Without stand-ins the large objects are real nodes in far chunks.
+    call("optimizer_undo", { project: d.dir });
+    const plain = call("optimizer_fix", { project: d.dir, fix: "partition", cell_size: 128, stand_ins: false });
+    assert.equal(plain.result.stand_ins, 0);
+    assert.ok(plain.result.containers.find((c) => c.container === "Forest").far_chunks > 5);
     assert.match(read(d.dir, "world/world_chunks/shared/trunk.tres"), /^\[gd_resource type="CylinderMesh"/);
   } finally {
     d.cleanup();
@@ -256,6 +291,8 @@ test("partition after instancing: MultiMeshes go into chunks, the meshes they sh
   try {
     for (const fix of ["install", "ranges", "instancing"]) call("optimizer_fix", { project: d.dir, fix });
     const s0 = flat(d.dir);
+    const mmNames = new ResourceFile(read(d.dir, SCENE)).nodes.map((n) => `${n.attrs.parent}/${n.attrs.name}`);
+    assert.equal(new Set(mmNames).size, mmNames.length, "instancing after ranges makes unique names");
     const r = call("optimizer_fix", { project: d.dir, fix: "partition" });
     let instances = 0;
     for (const c of r.result.containers) {
@@ -263,7 +300,7 @@ test("partition after instancing: MultiMeshes go into chunks, the meshes they sh
     }
     assert.equal(instances + flat(d.dir).multimeshInstances, s0.multimeshInstances);
     const shared = readdirSync(join(d.dir, "world/world_chunks/shared"));
-    assert.ok(shared.includes("trunk.tres") && shared.length <= 6, `only meshes are shared: ${shared}`);
+    assert.ok(shared.includes("trunk.tres") && shared.length <= 10, `only meshes are shared: ${shared}`);
   } finally {
     d.cleanup();
   }
@@ -332,4 +369,21 @@ test("MCP: initialize, list, call, errors", async () => {
   assert.equal((await handle({ jsonrpc: "2.0", id: 5, method: "nope" })).error.code, -32601);
   const explain = await handle({ jsonrpc: "2.0", id: 6, method: "tools/call", params: { name: "optimizer_explain", arguments: { topic: "world/repeated-mesh-nodes" } } });
   assert.match(explain.result.structuredContent.title, /Instancing/);
+});
+
+test("a MultiMesh has the box of its instances, so a forest cell is streamed as a large object", () => {
+  const d = demo();
+  try {
+    for (const fix of ["install", "ranges", "instancing"]) call("optimizer_fix", { project: d.dir, fix });
+    const objects = new World(new Project(d.dir)).flatten(SCENE).objects.filter((o) => o.kind === "multimesh");
+    assert.ok(objects.length > 5);
+    for (const o of objects) assert.ok(o.aabb[3] - o.aabb[0] > 1 && o.aabb[4] - o.aabb[1] > 0.1, "box has a size");
+    const r = call("optimizer_fix", { project: d.dir, fix: "partition" });
+    const forest = JSON.parse(read(d.dir, r.result.containers.find((c) => c.container === "Forest").manifest));
+    const far = forest.chunks.filter((c) => c.layer === "far");
+    assert.ok(far.length >= forest.chunks.length * 0.6, `${far.length} of ${forest.chunks.length} forest chunks are far chunks`);
+    for (const c of far) assert.ok(c.load_radius > 400, `far radius ${c.load_radius}`);
+  } finally {
+    d.cleanup();
+  }
 });

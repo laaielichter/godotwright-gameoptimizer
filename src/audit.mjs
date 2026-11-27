@@ -97,7 +97,7 @@ const STEP = {
   lods: { title: "Turn on mesh LODs and shadow meshes for imported models, then re-import", risk: "reimport" },
   lights: { title: "Give omni and spot lights a distance fade", risk: "visual-safe" },
   ranges: { title: "Give small objects a visibility range sized from their own box; stop tiny ones casting shadows", risk: "visual-safe" },
-  instancing: { title: "Merge repeated meshes into one MultiMesh per world cell", risk: "structural" },
+  instancing: { title: "Merge repeated meshes into one MultiMesh per world cell (a trade: far fewer nodes, coarser culling; keep it only if the benchmark agrees)", risk: "structural, measure" },
   partition: { title: "Partition the world scene into streamed chunks", risk: "structural" },
 };
 
@@ -121,6 +121,7 @@ export function plan(findings) {
     cli: `gameoptimizer fix ${s.fix}${s.scene ? ` --scene ${s.scene}` : ""}`,
     settles: s.findings,
     risk: STEP[s.fix].risk,
+    ...(s.fix === "instancing" && !findings.some((f) => f.id === "world/repeated-mesh-nodes" && f.severity === "high") ? { optional: true, when: "Skip it unless node count or load time is the problem: Forward+ already batches identical meshes, and partition streams them as they are." } : {}),
   }));
   const manual = findings.filter((f) => !f.fix && f.severity !== "info").map((f) => f.id);
   return { steps: out, manual, verify: "After each step: optimizer_bench with the same route, then optimizer_compare against the baseline. Undo a step that made it worse with optimizer_undo." };

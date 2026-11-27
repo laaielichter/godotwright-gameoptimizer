@@ -51,7 +51,7 @@ const FIXES = {
   lights: { run: (p, tx, a) => fixLights(p, tx, { scene: a.scene, paraboloid: !!a.paraboloid }), needsScene: true, summary: "Distance fade for omni and spot lights." },
   ranges: { run: (p, tx, a) => fixRanges(p, tx, { scene: a.scene, pixels: a.pixels ?? 6, shadows: a.shadows !== false, fade: !!a.fade }), needsScene: true, summary: "Visibility ranges from each object's size; tiny objects stop casting shadows." },
   instancing: { run: (p, tx, a) => fixInstancing(p, tx, { scene: a.scene, cellSize: a.cell_size, minCount: a.min_count ?? 12, pixels: a.pixels ?? 6 }), needsScene: true, summary: "Repeated meshes become one MultiMesh per world cell." },
-  partition: { run: (p, tx, a) => fixPartition(p, tx, { scene: a.scene, cellSize: a.cell_size, loadRadius: a.load_radius, farRadius: a.far_radius, nodes: a.nodes, minChildren: a.min_children ?? 24, pixels: a.pixels ?? 6, far: a.far !== false }), needsScene: true, summary: "Cuts the world scene into streamed chunk scenes with GOStreamer nodes." },
+  partition: { run: (p, tx, a) => fixPartition(p, tx, { scene: a.scene, cellSize: a.cell_size, loadRadius: a.load_radius, farRadius: a.far_radius, nodes: a.nodes, minChildren: a.min_children ?? 24, pixels: a.pixels ?? 6, far: a.far !== false, proxies: a.stand_ins !== false }), needsScene: true, summary: "Cuts the world scene into streamed chunk scenes with GOStreamer nodes." },
 };
 
 export const TOOLS = [
@@ -83,7 +83,7 @@ export const TOOLS = [
     name: "optimizer_costmap",
     title: "Predict rendering cost across the world",
     description:
-      "The world cost map of a scene: the map cut into cells, with what lies in each cell and what a camera standing there has in range (triangles, draw calls, objects), honouring visibility ranges. Returns the hotspots (where the frame rate will be lowest), a text picture of the map, and a benchmark route through the hotspots. Use it to see where a world is too dense before running it, and to choose a chunk size.",
+      "The world cost map of a scene: the map cut into cells, with what lies in each cell and what a camera standing there has in range (triangles, surfaces, objects), honouring visibility ranges. Surfaces are the ceiling of draw calls per pass: Forward+ batches identical mesh and material pairs. Returns the hotspots (where the frame rate will be lowest), a text picture of the map, and a benchmark route through the hotspots. Use it to see where a world is too dense before running it, and to choose a chunk size.",
     inputSchema: {
       type: "object",
       properties: {
@@ -132,7 +132,8 @@ export const TOOLS = [
         cell_size: { type: "number", description: "instancing, partition: cell size in metres (default: from the size of the world)." },
         load_radius: { type: "number", description: "partition: distance at which detail chunks load (default 2.5 cells)." },
         far_radius: { type: "number", description: "partition: distance at which chunks of large objects load (default: as far as each is visible)." },
-        far: { type: "boolean", description: "partition: put large objects in separate far chunks (default true)." },
+        far: { type: "boolean", description: "partition: keep large objects visible beyond the load radius (default true). false: everything loads at load_radius." },
+        stand_ins: { type: "boolean", description: "partition: draw the large parts of unloaded chunks with a light stand-in scene, one MultiMesh per mesh (default true). false: large objects go into far chunks as real nodes." },
         nodes: { type: "array", items: { type: "string" }, description: "partition: only these container node paths (default: every plain Node3D with many children)." },
         min_children: { type: "number", description: "partition: a container needs this many children (default 24)." },
         min_count: { type: "number", description: "instancing: merge a mesh that is placed at least this many times (default 12)." },
@@ -186,11 +187,12 @@ export const TOOLS = [
         headless: { type: "boolean", description: "No rendering: script, physics and scene cost only." },
         route: { type: "string", description: "Route file to use instead of the generated one: {mode, stations:[{pos:[x,y,z], look_at:[x,y,z]}]}." },
         reimport: { type: "boolean", description: "Import the project before the run (needed after the textures or lods fix)." },
+        fixed_fps: { type: "number", description: "Game time per frame as a frame rate (default 60): every run then sees the same animation and sun state at the same frame. 0: real time." },
         godot: { type: "string", description: "Path of the Godot 4 binary (default: $GODOT, then PATH)." },
       },
     },
     async handler(a) {
-      const r = await bench(a.project ?? ".", { scene: a.scene, label: a.label, frames: a.frames, warmup: a.warmup, mode: a.mode, tier: a.tier, resolution: a.resolution, renderer: a.renderer, headless: a.headless, route: a.route, reimport: a.reimport, godot: a.godot });
+      const r = await bench(a.project ?? ".", { scene: a.scene, label: a.label, frames: a.frames, warmup: a.warmup, mode: a.mode, tier: a.tier, resolution: a.resolution, renderer: a.renderer, headless: a.headless, route: a.route, reimport: a.reimport, godot: a.godot, fixedFps: a.fixed_fps });
       const rep = r.report;
       return {
         label: r.label,

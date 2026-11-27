@@ -125,26 +125,52 @@ export async function bench(root, options = {}) {
 
   // The probe is an autoload. A project without the runtime kit gets it for the length of the run only.
   const probeTarget = join(project.root, "addons", "gameoptimizer", "go_probe.gd");
-  const hadProbe = existsSync(probeTarget);
+  // "Has the kit" means the whole kit: a lone probe file is a leftover of an interrupted run and is replaced.
+  const hadProbe = existsSync(probeTarget) && existsSync(join(project.root, "addons", "gameoptimizer", "go_quality.gd"));
+  const hadFolder = existsSync(join(project.root, "addons", "gameoptimizer"));
   const settingsFile = join(project.root, "project.godot");
   const settingsBefore = readFileSync(settingsFile, "utf8");
   const needAutoload = project.setting("autoload/GOProbe") === undefined;
+  const staleAutoload = !needAutoload && !hadProbe; // left behind by an interrupted run
   const cleanup = [];
+  const runCleanup = () => {
+    for (const c of cleanup.splice(0).reverse()) {
+      try {
+        c();
+      } catch {
+        /* best effort */
+      }
+    }
+  };
+  // Also put the project back when this process is stopped mid-run.
+  const onSignal = () => {
+    runCleanup();
+    process.exit(130);
+  };
+  process.once("SIGINT", onSignal);
+  process.once("SIGTERM", onSignal);
   try {
     if (!hadProbe) {
       mkdirSync(join(project.root, "addons", "gameoptimizer"), { recursive: true });
       copyFileSync(join(RUNTIME_DIR, "go_probe.gd"), probeTarget);
       cleanup.push(() => rmSync(probeTarget, { force: true }), () => rmSync(probeTarget + ".uid", { force: true }));
+      if (!hadFolder) cleanup.push(() => rmSync(join(project.root, "addons", "gameoptimizer"), { recursive: true, force: true }));
     }
     if (needAutoload) {
       writeFileSync(settingsFile, editProjectSettings(settingsBefore, { "autoload/GOProbe": "*res://addons/gameoptimizer/go_probe.gd" }));
       cleanup.push(() => writeFileSync(settingsFile, settingsBefore));
+    } else if (staleAutoload) {
+      cleanup.push(() => writeFileSync(settingsFile, editProjectSettings(settingsBefore, { "autoload/GOProbe": undefined })));
     }
     let imported = null;
     if (options.importFirst ?? (!existsSync(join(project.root, ".godot", "imported")) || options.reimport)) imported = await importProject(project, godot);
     const args = ["--path", project.root];
     if (options.renderer) args.push("--rendering-method", options.renderer);
     if (options.resolution) args.push("--resolution", options.resolution);
+    // A fixed time step: every frame advances the game by the same amount whatever the machine's speed, so two
+    // runs see the same animation, sun and physics state at the same frame. Frame times are still wall-clock.
+    const fixedFps = options.fixedFps ?? 60;
+    if (fixedFps > 0) args.push("--fixed-fps", String(fixedFps));
     args.push(`res://${scene}`, "--");
     args.push(`--go-probe=${out}`, `--go-frames=${options.frames ?? 300}`, `--go-warmup=${options.warmup ?? 30}`, "--go-wait-settled=1");
     if (routeFile) args.push(`--go-route=${routeFile}`);
@@ -157,22 +183,23 @@ export async function bench(root, options = {}) {
     const started = Date.now();
     const r = await run(cmd, full, { timeoutMs: options.timeoutMs ?? 900_000 });
     if (!existsSync(out)) {
-      const tail = r.out.split("\n").filter((l) => l.trim() && !/ALSA|snd_|audio/i.test(l)).slice(-25).join("\n");
+      const lines = r.out.split("\n").filter((l) => l.trim() && !/ALSA|snd_|audio/i.test(l));
+      const tail = [...lines.filter((l) => /^(SCRIPT ERROR|ERROR)/.test(l)).slice(0, 10), ...lines.slice(-15)].join("\n");
       throw new OptimizerError(`The run wrote no report${r.timedOut ? " (timed out)" : ` (exit code ${r.code})`}.`, `Last output of Godot:\n${tail}`);
     }
     const report = JSON.parse(readFileSync(out, "utf8"));
-    const scriptErrors = r.out.split("\n").filter((l) => /^(SCRIPT ERROR|ERROR)/.test(l) && !/alsa|audio|pulse|status < 0/i.test(l));
-    const result = { label, file: out, scene, seconds: Math.round((Date.now() - started) / 100) / 10, route: routeFile, shots: existsSync(shotsDir) ? shotsDir : null, imported, errors: [...new Set(scriptErrors)].slice(0, 15), report };
+    const all = r.out.split("\n").filter((l) => /^(SCRIPT ERROR|ERROR)/.test(l) && !/alsa|audio|pulse|status < 0/i.test(l));
+    // What the engine reports while it shuts down is kept apart from errors of the run itself.
+    const atExit = (l) => /at exit|never freed|leaked at exit|still in use/.test(l);
+    const scriptErrors = all.filter((l) => !atExit(l));
+    const exitLeaks = all.filter(atExit).length;
+    const result = { label, file: out, scene, seconds: Math.round((Date.now() - started) / 100) / 10, route: routeFile, shots: existsSync(shotsDir) ? shotsDir : null, imported, errors: [...new Set(scriptErrors)].slice(0, 15), exit_leak_messages: exitLeaks, report };
     writeFileSync(out, JSON.stringify({ ...report, label, route: routeFile, errors: result.errors }, null, 1));
     return result;
   } finally {
-    for (const c of cleanup.reverse()) {
-      try {
-        c();
-      } catch {
-        /* best effort */
-      }
-    }
+    process.removeListener("SIGINT", onSignal);
+    process.removeListener("SIGTERM", onSignal);
+    runCleanup();
   }
 }
 

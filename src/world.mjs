@@ -354,7 +354,28 @@ export class World {
       const mm = id !== null ? sc.file.sub.get(id) : null;
       const count = mm ? n(mm.get("instance_count"), 0) : 0;
       const info = mm ? this.meshInfo(path, sc.file, mm.get("mesh")) : null;
-      objects.push({ ...base, kind: "multimesh", count, meshKey: info?.key ?? null, triangles: info?.triangles != null ? info.triangles * count : null, surfaces: info?.surfaces ?? 1, aabb: pointBox(t), castShadow: n(prop("cast_shadow"), 1) !== 0, visEnd: n(prop("visibility_range_end"), 0) });
+      // The box of a MultiMesh: its instance origins, grown by the mesh's radius at the largest instance scale.
+      let box = null;
+      const buf = mm?.get("buffer");
+      if (buf && buf.$ && count > 0 && n(mm.get("transform_format"), 0) === 1) {
+        const data = buf.args;
+        const stride = Math.round(data.length / count);
+        if (stride >= 12) {
+          let scale = 0;
+          box = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+          for (let i = 0; i + 11 < data.length; i += stride) {
+            const p = [data[i + 3], data[i + 7], data[i + 11]];
+            for (let a = 0; a < 3; a++) {
+              if (p[a] < box[a]) box[a] = p[a];
+              if (p[a] > box[a + 3]) box[a + 3] = p[a];
+            }
+            scale = Math.max(scale, Math.hypot(data[i], data[i + 4], data[i + 8]), Math.hypot(data[i + 1], data[i + 5], data[i + 9]), Math.hypot(data[i + 2], data[i + 6], data[i + 10]));
+          }
+          const grow = (info?.aabb ? aabbRadius(info.aabb) : 0.5) * (scale || 1);
+          box = [box[0] - grow, box[1] - grow, box[2] - grow, box[3] + grow, box[4] + grow, box[5] + grow];
+        }
+      }
+      objects.push({ ...base, kind: "multimesh", count, meshKey: info?.key ?? null, triangles: info?.triangles != null ? info.triangles * count : null, surfaces: info?.surfaces ?? 1, aabb: box ? xformAabb(t, box) : pointBox(t), castShadow: n(prop("cast_shadow"), 1) !== 0, visEnd: n(prop("visibility_range_end"), 0) });
       return;
     }
     if (LIGHTS.has(type)) {
@@ -364,6 +385,7 @@ export class World {
         shadow: prop("shadow_enabled") === true,
         range: type === "OmniLight3D" ? n(prop("omni_range"), 5) : type === "SpotLight3D" ? n(prop("spot_range"), 5) : Infinity,
         distanceFade: prop("distance_fade_enabled") === true,
+        fadeEnd: n(prop("distance_fade_begin"), 40) + n(prop("distance_fade_length"), 10),
         shadowMode: type === "DirectionalLight3D" ? n(prop("directional_shadow_mode"), 2) : type === "OmniLight3D" ? n(prop("omni_shadow_mode"), 1) : 0,
         shadowMaxDistance: n(prop("directional_shadow_max_distance"), 100),
         bake: n(prop("light_bake_mode"), 2),
@@ -463,6 +485,13 @@ export function summarize(flat) {
   }
   sum.uniqueMeshes = meshes.size;
   sum.materials = mats.size;
+  // Forward+ and Mobile draw identical mesh and material pairs in one instanced call when they sort together:
+  // the number of distinct pairs is the floor of the draw calls per pass, the number of surfaces the ceiling.
+  const pairs = new Map();
+  for (const o of flat.objects) {
+    if (o.kind === "mesh") pairs.set(`${o.meshKey}|${o.materialKey}`, o.surfaces);
+  }
+  sum.batches = [...pairs.values()].reduce((a, b) => a + b, 0) + sum.multimeshes;
   if (sum.bounds) sum.extent = [sum.bounds[3] - sum.bounds[0], sum.bounds[4] - sum.bounds[1], sum.bounds[5] - sum.bounds[2]].map((x) => Math.round(x * 10) / 10);
   return sum;
 }
