@@ -46,6 +46,7 @@ engine leaves to you, and what this tool does about it.
 | **Hitches from main-thread loading.** `load`, `instantiate` and `add_child` block the frame. | **GOSpawnQueue** loads on a thread and attaches within a time budget. The audit finds the loops that do it the slow way. |
 | **Shader compilation stutter** for content that arrives after the loading screen. | **GOPrewarm** draws every material and vertex format once behind the loading screen. The probe counts pipeline compilations per frame, so you can see it work. |
 | **Lights that never switch off.** Every shadowed omni light renders the scene six times. | `lights` sets distance fade from each light's range; optional dual-paraboloid shadows. |
+| **The world is built from code**, or the game only exists as a `.pck`: there is no scene file to read. | The **live census** starts the game, lets the world build and counts what is really in the tree: nodes per script that made them, repeated meshes, a mesh or a material per object, objects without a visibility range, textures that sit uncompressed in VRAM, nodes that process every frame. **GOWorldPolicy** then gives every mesh and light a visibility range, shadow rule and distance fade as it enters the tree. |
 | **Where is it slow?** You find out by flying around. | The **world cost map** predicts triangles, draw calls and shadowed lights per cell from the files, finds the hotspots and writes a benchmark route through them. |
 | **Did the optimization break the look?** | `bench` takes a screenshot at every station; `compare` checks them pixel by pixel next to the numbers. Runs use a fixed time step, so the sun and animations are in the same state in both. |
 | **Importing on a machine without a GPU hangs** on VRAM-compressed textures (the GPU compressor runs on a software driver). | `import` and `bench` select the CPU compressor for the length of the import. |
@@ -134,6 +135,19 @@ loop; [skills/gameoptimizer](skills/gameoptimizer/SKILL.md) is the same as an ag
 Measuring needs Godot 4 (4.3 or newer; developed against 4.7.2): pass `godot` or set `GODOT`. The audit, the cost
 map and every fix work without it.
 
+## Worlds built from code
+
+```sh
+gameoptimizer census path/to/project            # or: --pack game.pck
+gameoptimizer fix policy path/to/project
+gameoptimizer census path/to/project --label after
+```
+
+On the demo built by a script (`gameoptimizer demo /tmp/w --procedural`, 1 101 mesh instances) the first census
+reports 1 100 objects without a visibility range, 300 materials used by one object each and a 1024 px texture made
+at run time, all traced to `world_builder.gd`. After `fix policy` the second census counts 1 object without a range
+(the ground), no tiny shadow casters and no lights without a fade.
+
 ## The loop
 
 ```text
@@ -151,8 +165,9 @@ optimizer_compare run=<step>            better / same / worse, picture same / ch
 | --- | --- | --- |
 | `optimizer_audit` | `audit` | Findings with evidence and the plan. Reads scenes, models, textures, import files, settings, scripts and shaders. |
 | `optimizer_costmap` | `costmap` | Predicted cost per world cell, hotspots, a text picture of the map, a benchmark route. |
+| `optimizer_census` | `census` | Starts a scene (project or `--pack game.pck`), lets it build, counts the live tree and reports findings. For worlds built from code. |
 | `optimizer_textures` | `textures` | GPU memory per texture, largest first. |
-| `optimizer_fix` | `fix <name>` | `install`, `settings`, `textures`, `lods`, `lights`, `ranges`, `instancing`, `partition`. `dry_run` supported. |
+| `optimizer_fix` | `fix <name>` | `install`, `policy`, `settings`, `textures`, `lods`, `lights`, `ranges`, `instancing`, `partition`. `dry_run` supported. |
 | `optimizer_undo` | `undo [id]` | Takes a fix back; `--list` shows the journal. |
 | `optimizer_bench` | `bench` | Runs the game with the probe: percentiles, hitches with position and cause, monitors, screenshots. `stations` or `fly`. |
 | `optimizer_compare` | `compare <run>` | Baseline against a run, per metric, per station and per screenshot. Exit code 1 on a regression. |
@@ -172,7 +187,11 @@ optimizer_compare run=<step>            better / same / worse, picture same / ch
 - **Settings**: occlusion culling, VRAM compression, anisotropic filtering, debanding, physics engine and thread,
   culling thread threshold, MSAA with temporal AA, native high resolution without an upscaler, physics tick rate,
   uncapped frame rate, shadow atlas size. Every path was checked against the Godot 4.7 class reference.
-- **Scripts**: node lookups and `load()` on per-frame paths, a `MeshInstance3D` or a material per object in a loop,
+- **The running game** (`census`): the same world rules on the live tree, plus a mesh or a material per object,
+  uncompressed and run-time textures, nodes that process every frame, tree size, SubViewports that always update,
+  canvas item counts, trimesh faces, distance from the origin. Every row names the script that built the nodes.
+- **Scripts**: whole-tree searches from the root, time tests that stay true for a window of frames, label text
+  set every frame, textures made from images at run time, node lookups and `load()` on per-frame paths, a `MeshInstance3D` or a material per object in a loop,
   `instantiate()` in loops, collision built from meshes in loops, mesh generation on the main thread, `print` every
   frame, arrays allocated every frame. This is where worlds built from code show up.
 - **Shaders**: screen and depth reads, `discard` without a depth prepass, long texture loops.
@@ -197,8 +216,9 @@ await prewarm.run(["res://world/world_chunks/Town/c_0_0.tscn"])   # GOPrewarm, b
 
 - The audit reads text scenes and resources (`.tscn`, `.tres`) and glTF models. Binary `.scn` and `.res` files are
   counted but not opened.
-- A world built entirely from code has no scene to partition. The script rules point at the loops that build it;
-  the runtime kit (streamer, spawn queue, quality tiers, governor) is used from that code.
+- A world built entirely from code has no scene to partition. `census` shows what the code builds and which
+  script builds it, `fix policy` culls it at run time, and the script rules point at the loops; merging nodes into
+  MultiMeshes or streaming generated chunks is then a change in that code.
 - Stand-ins cover plain meshes. Models placed as `.glb` scenes, skinned meshes, MultiMeshes and anything with a
   light that still shines beyond the load radius stay real nodes in far chunks.
 - `instancing` and `partition` leave nodes alone that have a script, a group, children (instancing), a connection

@@ -20,6 +20,11 @@ The loop:
    regression, or tune the fix (`pixels`, `cell_size`, `load_radius`) and try again.
 6. Findings without a fix are code or content changes. `optimizer_explain` with the finding id says what to change.
 
+A world that is built from code (or a game that only exists as a `.pck`) has no scene file for the audit to read.
+Use `optimizer_census` (with `pack` for a .pck): it runs the game and counts the live tree, and its findings name
+the script that built the nodes. `optimizer_fix {fix: "policy"}` applies the culling rules at run time; the rest is
+a change in the code that the finding points at.
+
 Rules of thumb:
 
 - Never apply `instancing` or `partition` without a baseline: they are structural. Commit to git before each.
@@ -57,6 +62,8 @@ Node 20 or newer, ESM, zero runtime dependencies, no build step: `npx github:...
 - `src/fix/`: the fixes (`settings.mjs` also holds the .import edits, `scene.mjs` lights, ranges and instancing,
   `partition.mjs`, `install.mjs`). Every fix writes through a `Transaction` (`src/journal.mjs`): dry run and undo
   come from there, never write files directly.
+- `src/census.mjs`: runs `runtime/tools/go_census.gd` (a SceneTree script with no dependencies) on a project or a
+  pack and turns the report into findings.
 - `src/bench.mjs`: runs Godot with the probe, imports, compares reports and screenshots. `src/png.mjs`: PNG codec.
 - `src/demo.mjs`: the demo open world (also the test fixture).
 - `runtime/addons/gameoptimizer/`: the GDScript kit that `install` copies into a game. Its `README.md` is the API.

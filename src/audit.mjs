@@ -89,9 +89,10 @@ function score(c) {
   return Math.max(0, 100 - c.high * 12 - c.medium * 5 - c.low * 2);
 }
 
-const ORDER = ["install", "settings", "textures", "lods", "lights", "ranges", "instancing", "partition"];
+const ORDER = ["install", "policy", "settings", "textures", "lods", "lights", "ranges", "instancing", "partition"];
 const STEP = {
   install: { title: "Install the runtime kit (quality tiers, governor, streamer, spawn queue, prewarm, probe)", risk: "safe" },
+  policy: { title: "Culling rules for nodes that scripts create at run time (GOWorldPolicy)", risk: "visual-safe" },
   settings: { title: "Write the recommended project settings", risk: "safe" },
   textures: { title: "VRAM-compress and mipmap the textures used in 3D, then re-import", risk: "reimport" },
   lods: { title: "Turn on mesh LODs and shadow meshes for imported models, then re-import", risk: "reimport" },

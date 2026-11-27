@@ -5,6 +5,12 @@ export const EXPLAIN = {
     text: "1. optimizer_audit: findings and a plan. 2. optimizer_bench with label baseline: real numbers on a route through the predicted hotspots. 3. One optimizer_fix at a time, in the plan's order (dry_run first if unsure). 4. optimizer_bench with a new label, optimizer_compare against the baseline. 5. Keep the fix when the verdict is an improvement with the picture unchanged; optimizer_undo when it is a regression. Findings without a fix are code or content changes: optimizer_explain tells you what to change.",
     check: "Each fix is one journal entry. Commit to git between steps so structural fixes are easy to review.",
   },
+  census: {
+    title: "The live census and the world policy",
+    findings: ["live/"],
+    text: "A scene file can be read from disk. A world that scripts build at run time, or a game that only exists as a .pck, cannot: the files say what the code is, not what it makes. The census starts a scene with a SceneTree script, gives the world time to build and walks the live tree. It reports nodes by class and by script, and for every group of nodes the nearest script above them (who built this), mesh instances by mesh and material, objects without a visibility range, textures with their GPU format, nodes that process every frame, SubViewports and canvas items. GOWorldPolicy is the fix that needs no change in the building code: it listens for nodes entering the tree and gives each mesh and light a visibility range from its own size, a shadow rule and a distance fade, within a time budget per frame. Merging repeated nodes into MultiMeshes, sharing meshes and materials and baking run-time textures are changes in the script the finding names.",
+    check: "Run the census again with another label after each change and compare the counts. A headless census counts the same nodes; only the draw-call monitors are zero.",
+  },
   streaming: {
     title: "World streaming (partition + GOStreamer)",
     findings: ["world/monolithic-scene", "world/repeated-scene-instances", "world/many-bodies"],

@@ -19,7 +19,7 @@ export function findGodot(explicit, env = process.env) {
   throw new OptimizerError("Godot was not found.", "Pass `godot` with the path of the Godot 4 binary, or set the GODOT environment variable. The audit, the cost map and every fix work without Godot; only measuring needs it.");
 }
 
-function run(cmd, args, { timeoutMs = 600_000, env } = {}) {
+export function runProcess(cmd, args, { timeoutMs = 600_000, env } = {}) {
   return new Promise((done) => {
     const child = spawn(cmd, args, { env: env ?? process.env, stdio: ["ignore", "pipe", "pipe"] });
     let out = "";
@@ -41,7 +41,7 @@ function run(cmd, args, { timeoutMs = 600_000, env } = {}) {
   });
 }
 
-function wrapDisplay(cmd, args, headless) {
+export function wrapDisplay(cmd, args, headless) {
   if (headless) return [cmd, ["--headless", ...args]];
   if (process.platform === "linux" && !process.env.DISPLAY && !process.env.WAYLAND_DISPLAY) {
     const x = spawnSync("which", ["xvfb-run"]);
@@ -64,7 +64,7 @@ export async function importProject(project, godot, { timeoutMs = 1_800_000, cpu
   const override = cpuCompress && project.setting(key) === undefined;
   if (override) writeFileSync(file, editProjectSettings(before, { [key]: false }));
   try {
-    const r = await run(godot, ["--headless", "--path", project.root, "--import"], { timeoutMs });
+    const r = await runProcess(godot, ["--headless", "--path", project.root, "--import"], { timeoutMs });
     const errors = r.out.split("\n").filter((l) => /^(ERROR|SCRIPT ERROR)/.test(l) && !/alsa|audio|pulse/i.test(l));
     return { ok: !r.timedOut, timed_out: r.timedOut, errors: errors.slice(0, 20) };
   } finally {
@@ -181,7 +181,7 @@ export async function bench(root, options = {}) {
     if (options.tier) args.push(`--go-tier=${options.tier}`);
     const [cmd, full] = wrapDisplay(godot, args, options.headless);
     const started = Date.now();
-    const r = await run(cmd, full, { timeoutMs: options.timeoutMs ?? 900_000 });
+    const r = await runProcess(cmd, full, { timeoutMs: options.timeoutMs ?? 900_000 });
     if (!existsSync(out)) {
       const lines = r.out.split("\n").filter((l) => l.trim() && !/ALSA|snd_|audio/i.test(l));
       const tail = [...lines.filter((l) => /^(SCRIPT ERROR|ERROR)/.test(l)).slice(0, 10), ...lines.slice(-15)].join("\n");

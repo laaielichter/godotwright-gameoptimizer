@@ -1,6 +1,6 @@
 {
   "name": "godotwright-gameoptimizer",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "mcpName": "io.github.laaielichter/godotwright-gameoptimizer",
   "description": "Performance optimizer for Godot 4 games, built for coding agents: MCP server and CLI that audit a project without Godot, predict rendering cost across an open world, apply reversible fixes (world streaming, per-cell instancing, visibility ranges, texture memory, quality tiers, adaptive resolution) and prove each one with benchmarks and screenshot comparison.",
   "license": "MIT",

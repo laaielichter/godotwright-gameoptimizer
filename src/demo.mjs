@@ -83,7 +83,7 @@ process/size_limit=0
 detect_3d/compress_to=1
 `;
 
-export function writeDemoWorld(dir, { trees = 6000, rocks = 2500, houses = 500, lamps = 260, fences = 1500, extent = 2000, seed = 7, textureSize = 1024, force = false } = {}) {
+export function writeDemoWorld(dir, { trees = 6000, rocks = 2500, houses = 500, lamps = 260, fences = 1500, extent = 2000, seed = 7, textureSize = 1024, force = false, procedural = false } = {}) {
   if (existsSync(join(dir, "project.godot")) && !force) throw new Error(`${dir} already holds a Godot project (pass force to overwrite)`);
   const r = rng(seed);
   const put = (file, content) => {
@@ -269,6 +269,127 @@ func _process(delta: float) -> void:
 `,
   );
 
+  if (procedural) {
+    // The same world, built by a script when the scene starts: the way many open worlds are made.
+    put(
+      "world/world_builder.gd",
+      `extends Node3D
+## Builds the world from code, the slow way on purpose: a node per object, a material per rock, a texture made at
+## run time. The census should point at each of these.
+
+@export var trees := ${trees}
+@export var rocks := ${rocks}
+@export var lamps := ${lamps}
+@export var extent := ${extent}.0
+
+var _bark: Material = preload("res://materials/bark.tres")
+var _leaves: Material = preload("res://materials/leaves.tres")
+
+
+func _ready() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = ${seed}
+	var trunk := CylinderMesh.new()
+	trunk.top_radius = 0.18
+	trunk.bottom_radius = 0.32
+	trunk.height = 6.0
+	trunk.radial_segments = 16
+	trunk.rings = 2
+	trunk.material = _bark
+	var crown := SphereMesh.new()
+	crown.radius = 2.6
+	crown.height = 5.4
+	crown.radial_segments = 24
+	crown.rings = 12
+	crown.material = _leaves
+	for i in trees:
+		var pos := Vector3(rng.randf_range(-extent, extent) * 0.5, 0.0, rng.randf_range(-extent, extent) * 0.5)
+		var size := rng.randf_range(0.7, 1.6)
+		var t := MeshInstance3D.new()
+		t.mesh = trunk
+		t.position = pos + Vector3(0.0, 3.0 * size, 0.0)
+		t.scale = Vector3.ONE * size
+		add_child(t)
+		var c := MeshInstance3D.new()
+		c.mesh = crown
+		c.position = pos + Vector3(0.0, 7.2 * size, 0.0)
+		c.scale = Vector3.ONE * size
+		add_child(c)
+	for i in rocks:
+		var rock := MeshInstance3D.new()
+		var shape := SphereMesh.new()
+		shape.radius = 0.12
+		shape.height = 0.16
+		shape.radial_segments = 8
+		shape.rings = 4
+		rock.mesh = shape
+		var tint := StandardMaterial3D.new()
+		tint.albedo_color = Color(0.5, 0.5, 0.48).lightened(rng.randf() * 0.2)
+		rock.material_override = tint
+		rock.position = Vector3(rng.randf_range(-extent, extent) * 0.5, 0.05, rng.randf_range(-extent, extent) * 0.5)
+		add_child(rock)
+	for i in lamps:
+		var lamp := OmniLight3D.new()
+		lamp.omni_range = 18.0
+		lamp.shadow_enabled = true
+		lamp.position = Vector3(rng.randf_range(-extent, extent) * 0.3, 4.8, rng.randf_range(-extent, extent) * 0.3)
+		add_child(lamp)
+	var image := Image.create(1024, 1024, false, Image.FORMAT_RGBA8)
+	image.fill(Color(0.35, 0.45, 0.3))
+	var sign := Sprite3D.new()
+	sign.texture = ImageTexture.create_from_image(image)
+	sign.position = Vector3(0.0, 3.0, 0.0)
+	sign.pixel_size = 0.004
+	add_child(sign)
+`,
+    );
+    put(
+      "world/world.tscn",
+      `[gd_scene load_steps=8 format=3]
+
+[ext_resource type="Script" path="res://world/fly_camera.gd" id="cam"]
+[ext_resource type="Script" path="res://world/world_builder.gd" id="builder"]
+[ext_resource type="Material" path="res://materials/ground.tres" id="ground"]
+
+[sub_resource type="ProceduralSkyMaterial" id="skymat"]
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("skymat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+tonemap_mode = 2
+
+[sub_resource type="PlaneMesh" id="groundmesh"]
+material = ExtResource("ground")
+size = Vector2(${extent + 400}, ${extent + 400})
+
+[node name="World" type="Node3D"]
+
+[node name="Environment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.866, -0.354, 0.354, 0, 0.707, 0.707, -0.5, -0.612, 0.612, 0, 50, 0)
+shadow_enabled = true
+
+[node name="Camera" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.966, 0.259, 0, -0.259, 0.966, 0, 12, 60)
+current = true
+far = 4000.0
+script = ExtResource("cam")
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+mesh = SubResource("groundmesh")
+
+[node name="Built" type="Node3D" parent="."]
+script = ExtResource("builder")
+`,
+    );
+    put(".gitignore", ".godot/\n");
+    return { dir, procedural: true, trees, rocks, lamps, extent, scene: "world/world.tscn" };
+  }
   // ---- the world scene --------------------------------------------------------------------------------------
   const half = extent / 2;
   const villages = [];

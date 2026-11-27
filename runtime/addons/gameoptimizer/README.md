@@ -11,6 +11,7 @@ The Godot side of godotwright-gameoptimizer. Copy `addons/gameoptimizer/` into a
 | `go_spawn_queue.gd` | autoload `GOSpawnQueue` | adds nodes a few per frame |
 | `go_prewarm.gd` | `class_name GOPrewarm` (Node) | compiles pipelines behind a loading screen |
 | `go_lod.gd` | `class_name GOLod` | scales visibility ranges by one bias |
+| `go_world_policy.gd` | autoload `GOWorldPolicy` (or a node you add) | culls nodes that scripts create at run time |
 | `go_probe.gd` | autoload `GOProbe` | measures a run and writes JSON; inert unless asked |
 
 ## GOQuality
@@ -108,6 +109,19 @@ camera; without a 3D camera, or with `force_sub_viewport`, in a SubViewport of i
 `GOLod.apply_bias(root, bias)` multiplies `visibility_range_begin/end` and their margins under `root`. The authored
 ranges are kept in the `go_vr` meta, so the bias does not compound. GOQuality's `lod_bias` calls it on the current
 scene, GOStreamer on every chunk it loads.
+
+## GOWorldPolicy
+
+For worlds that are built from code. Every `GeometryInstance3D` and `Light3D` that enters the tree is queued and
+handled within `budget_ms` per frame: a visibility range from the object's own box (not drawn where it is smaller
+than `pixels` on a 1080p screen), no shadow below `shadow_min_radius`, and a distance fade on omni and spot lights
+(shadow first). Nodes that already have a range or a fade are not touched; the group or meta `go_keep` opts a node
+(and, for the meta, what is below it) out. Settings come from `world_policy.json` next to the script.
+
+```gdscript
+add_child(load("res://addons/gameoptimizer/go_world_policy.gd").new())   # without the autoload
+GOWorldPolicy.get_stats()   # seen, ranges_set, shadows_off, lights_faded, left_alone, pending
+```
 
 ## GOProbe
 

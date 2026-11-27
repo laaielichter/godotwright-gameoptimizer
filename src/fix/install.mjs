@@ -56,3 +56,22 @@ export function fixInstall(project, tx) {
     },
   };
 }
+
+/** Registers GOWorldPolicy and writes its settings: culling rules for nodes that scripts create at run time. */
+export function fixPolicy(project, tx, { pixels = 6, shadowMinRadius = 0.35, lightFadeFactor = 8, budgetMs = 1 } = {}) {
+  const target = "addons/gameoptimizer/go_world_policy.gd";
+  const content = readFileSync(join(RUNTIME_DIR, "go_world_policy.gd"));
+  if (!project.exists(target) || !readFileSync(project.abs(target)).equals(content)) tx.write(target, content);
+  const policy = { enabled: true, pixels, min_range: 30, max_range: 3600, shadow_min_radius: shadowMinRadius, light_fade_factor: lightFadeFactor, budget_ms: budgetMs, margin: 0.08 };
+  const file = "addons/gameoptimizer/world_policy.json";
+  const text = JSON.stringify(policy, null, 1) + "\n";
+  if (project.text(file) !== text) tx.write(file, text);
+  const want = "*res://addons/gameoptimizer/go_world_policy.gd";
+  const added = project.setting("autoload/GOWorldPolicy") !== want;
+  if (added) tx.write("project.godot", editProjectSettings(tx.writes.get("project.godot") ?? project.text("project.godot"), { "autoload/GOWorldPolicy": want }));
+  return {
+    autoload_added: added,
+    policy,
+    note: "Every mesh and light that enters the tree gets a visibility range from its own size, no shadow when tiny, and a distance fade, a few nodes per frame. Nodes that already have a range or a fade are not touched. Opt a node out with the group or meta go_keep. In a game that ships as a pack without this autoload, add the node from code: add_child(load(\"res://addons/gameoptimizer/go_world_policy.gd\").new()).",
+  };
+}

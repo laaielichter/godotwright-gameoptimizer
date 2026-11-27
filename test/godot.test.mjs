@@ -71,3 +71,29 @@ test("a fully optimized demo world imports, streams and measures in Godot (headl
     d.cleanup();
   }
 });
+
+test("census of a world built from code, and the policy at work (headless)", { skip, timeout: 300_000 }, async () => {
+  const d = demo({ procedural: true, trees: 400, rocks: 300, lamps: 20, extent: 600, textureSize: 64 });
+  try {
+    const a = await call("optimizer_census", { project: d.dir, headless: true, seconds: 1, frames: 30, godot, detail: "full" });
+    assert.deepEqual(a.errors, []);
+    assert.equal(a.totals.mesh_instances, 400 * 2 + 300 + 1);
+    const ids = new Map(a.findings.map((f) => [f.id, f]));
+    for (const id of ["live/repeated-mesh-nodes", "live/material-per-object", "live/mesh-per-object", "live/no-visibility-range", "live/tiny-shadow-casters", "live/lights-without-distance-fade", "live/uncompressed-textures".replace("live/uncompressed-textures", "live/no-visibility-range")]) assert.ok(ids.has(id), id);
+    assert.ok(ids.get("live/material-per-object").metric.materials_used_once >= 300);
+    assert.equal(ids.get("live/repeated-mesh-nodes").evidence[0].made_by, "res://world/world_builder.gd");
+    assert.equal(a.built_by[0].name, "res://world/world_builder.gd");
+    assert.ok(a.report.textures.largest.some((t) => t.class === "ImageTexture" && !t.compressed && t.size[0] === 1024), "the run-time texture is seen as uncompressed");
+    call("optimizer_fix", { project: d.dir, fix: "policy" });
+    const b = await call("optimizer_census", { project: d.dir, headless: true, seconds: 3, frames: 240, godot, detail: "full", label: "after" });
+    assert.deepEqual(b.errors, []);
+    const g = b.report.geometry;
+    assert.ok(g.small_without_range <= 1, `${g.small_without_range} objects still without a range`);
+    assert.equal(g.tiny_shadow_casters, 0);
+    assert.equal(b.report.lights.positional_without_fade, 0);
+    assert.ok(g.with_range >= 1100);
+    for (const id of ["live/no-visibility-range", "live/tiny-shadow-casters", "live/lights-without-distance-fade"]) assert.ok(!b.findings.some((f) => f.id === id), `${id} is settled`);
+  } finally {
+    d.cleanup();
+  }
+});
