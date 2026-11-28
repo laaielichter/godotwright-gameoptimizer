@@ -17,7 +17,8 @@
   <a href="#measured">Measured</a> ·
   <a href="#install-for-your-agent">Install</a> ·
   <a href="#tools">Tools</a> ·
-  <a href="#limits">Limits</a>
+  <a href="#limits">Limits</a> ·
+  <a href="https://github.com/laaielichter/Godotwright">Godotwright</a>
 </p>
 
 # Godotwright Game Optimizer
@@ -33,7 +34,8 @@ a screenshot comparison. Made for heavy open worlds; works on any 3D project.
   every screenshot. A fix that does not win is undone.
 
 By [laaielichter](https://github.com/laaielichter). MIT. Node 20+, zero dependencies, no build step.
-Sister project of [Godotwright](https://github.com/laaielichter/godotwright), the coding toolkit for Godot agents.
+Part of the **Godotwright** family: [Godotwright](https://github.com/laaielichter/Godotwright) keeps your agent's Godot
+code correct, the Game Optimizer makes the game fast. [Use them together](#use-it-with-godotwright).
 
 <p align="center">
   <img src="docs/assets/audit.svg" alt="Terminal output of gameoptimizer audit on the demo world: score 9/100, high findings such as 16k identical meshes as separate nodes and 260 lights that never fade out, each with a fix command, and the plan." width="100%">
@@ -179,6 +181,20 @@ loop; [skills/gameoptimizer](skills/gameoptimizer/SKILL.md) is the same as an ag
 
 Measuring needs Godot 4 (4.3 or newer; developed against 4.7.2): pass `godot` or set `GODOT`. The audit, the cost
 map and every fix work without it.
+
+## Use it with Godotwright
+
+[**Godotwright**](https://github.com/laaielichter/Godotwright) ([website](https://laaielichter.github.io/Godotwright/))
+is the coding toolkit for Godot agents: the real Godot 4.7 API offline, a scored review of every script that catches
+Godot 3 habits, scenes that merge in git, and `bisect` to find the commit that broke it. Godotwright makes sure what
+the agent writes is right; the Game Optimizer makes sure it runs well. Both are MCP servers, so one agent can use both:
+
+```sh
+claude mcp add godotwright -- npx -y godotwright mcp
+claude mcp add gameoptimizer -- npx -y github:laaielichter/godotwright-gameoptimizer mcp
+```
+
+A good order: `godotwright review` until the scripts are clean, then `optimizer_audit` and the measure-fix-compare loop.
 
 ## Worlds built from code
 

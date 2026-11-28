@@ -98,12 +98,13 @@ footer { padding: 40px 0 60px; color: var(--muted); font-size: 15px; }
   <a href="#install">Install</a>
   <a href="#tools">Tools</a>
   <a href="#limits">Limits</a>
-  <button class="theme" id="theme" type="button" aria-label="Toggle dark mode">◐</button>
+  <a href="#godotwright">Godotwright</a>
+  <button class="theme" id="theme" type="button" aria-label="Toggle dark mode">Theme</button>
   <a class="gh" href="https://github.com/laaielichter/godotwright-gameoptimizer">★ GitHub</a>
 </div></nav>
 
 <header class="hero" id="top"><div class="wrap">
-  <div class="kicker">Godotwright · for Godot 4</div>
+  <div class="kicker"><a href="#godotwright" style="color:inherit;text-decoration:none">Godotwright</a> · for Godot 4</div>
   <h1>Find what slows your Godot game.<br>Fix it. Prove it.</h1>
   <p class="lead">An MCP server and CLI that lets a coding agent read your project, find what holds the frame rate, memory and load times back, apply the fix and check it with a benchmark and a screenshot comparison. Every change can be undone.</p>
   <div class="cmd"><code id="cmd1">npx -y github:laaielichter/godotwright-gameoptimizer audit path/to/project</code><button type="button" data-copy="cmd1">Copy</button></div>
@@ -224,6 +225,21 @@ npx -y github:laaielichter/godotwright-gameoptimizer fix ranges ./world --scene 
   <p class="caption">On Windows, if <code>npx</code> does not start from the client: <code>"command": "cmd", "args": ["/c", "npx", "-y", ...]</code>.</p>
 </div></section>
 
+<section id="godotwright"><div class="wrap two">
+  <div>
+    <h2>Use it with Godotwright</h2>
+    <p class="sub"><a href="https://github.com/laaielichter/Godotwright"><strong>Godotwright</strong></a> is the coding toolkit for Godot agents: the real Godot 4.7 API offline, a scored review of every script that catches Godot 3 habits, scenes that merge in git, and <code>bisect</code> to find the commit that broke it.</p>
+    <p class="sub">Godotwright makes sure what the agent writes is right. The Game Optimizer makes sure it runs well. Both are MCP servers, so one agent uses both: review until the scripts are clean, then audit, measure, fix and compare.</p>
+    <div class="ctas" style="display:flex;flex-wrap:wrap;gap:12px">
+      <a class="btn primary" style="background:var(--accent);color:#fff" href="https://laaielichter.github.io/Godotwright/">Godotwright website</a>
+      <a class="btn" style="border:1px solid var(--line);color:var(--ink)" href="https://github.com/laaielichter/Godotwright">Godotwright on GitHub</a>
+    </div>
+  </div>
+  <pre class="code" style="white-space:pre-wrap;word-break:break-all">claude mcp add godotwright -- npx -y godotwright mcp
+
+claude mcp add gameoptimizer -- npx -y github:laaielichter/godotwright-gameoptimizer mcp</pre>
+</div></section>
+
 <section id="tools"><div class="wrap">
   <h2>Tools</h2>
   <p class="sub">Every tool is both an MCP tool and a CLI command with <code>--json</code>.</p>
@@ -257,7 +273,7 @@ npx -y github:laaielichter/godotwright-gameoptimizer fix ranges ./world --scene 
 
 <footer><div class="wrap">
   Made by <a href="https://github.com/laaielichter">laaielichter</a>. MIT licensed.
-  Sister project of <a href="https://github.com/laaielichter/godotwright">Godotwright</a>, the coding toolkit for Godot agents.
+  Part of the Godotwright family: <a href="https://laaielichter.github.io/Godotwright/">Godotwright</a>, the coding toolkit for Godot agents.
   · <a href="https://github.com/laaielichter/godotwright-gameoptimizer/issues">Issues</a>
   · <a href="https://github.com/laaielichter/godotwright-gameoptimizer/blob/main/CONTRIBUTING.md">Contributing</a>
 </div></footer>
