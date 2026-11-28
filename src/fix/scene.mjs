@@ -3,7 +3,7 @@ import { ResourceFile, makeSection } from "../godot/tscn.mjs";
 import { num, aabbRadius, toTransform, writeTransform } from "../godot/variant.mjs";
 import { distanceForPixels, instancingGroups } from "../analyze/world.mjs";
 import { World } from "../world.mjs";
-import { autoCellSize } from "../costmap.mjs";
+import { autoCellSize, validateCellSize } from "../costmap.mjs";
 
 /** Opens scene files for editing once each and writes the changed ones into the transaction. */
 class SceneEdits {
@@ -124,6 +124,7 @@ const INSTANCING_PROPS = new Set(["transform", "mesh", "cast_shadow", "gi_mode",
  * script, children, groups, a connection or a NodePath pointing at them are left alone.
  */
 export function fixInstancing(project, tx, { scene, cellSize, minCount = 12, minPerCell = 4, pixels = 6 } = {}) {
+  validateCellSize(cellSize);
   const { flat } = flatOf(project, scene);
   const text = tx.writes.get(scene) ?? project.text(scene);
   const file = new ResourceFile(text);

@@ -3,7 +3,7 @@
 import { Project, OptimizerError } from "./project.mjs";
 import { audit, worldScenes } from "./audit.mjs";
 import { World, summarize } from "./world.mjs";
-import { buildCostMap, routeFromCostMap, renderCostMap } from "./costmap.mjs";
+import { buildCostMap, routeFromCostMap, renderCostMap, validateCellSize } from "./costmap.mjs";
 import { Transaction, undo, journalEntries } from "./journal.mjs";
 import { fixSettings, fixTextures, fixLods } from "./fix/settings.mjs";
 import { fixLights, fixRanges, fixInstancing } from "./fix/scene.mjs";
@@ -73,7 +73,8 @@ export const TOOLS = [
     },
     annotations: { readOnlyHint: true },
     handler(a) {
-      const r = audit(a.project ?? ".", { scene: a.scene });
+      validateCellSize(a.cell_size);
+      const r = audit(a.project ?? ".", { scene: a.scene, cellSize: a.cell_size });
       const order = ["high", "medium", "low", "info"];
       const min = order.indexOf(a.min_severity ?? "info");
       r.findings = r.findings.filter((f) => order.indexOf(f.severity) <= min);
@@ -98,6 +99,7 @@ export const TOOLS = [
     },
     annotations: { readOnlyHint: true },
     handler(a) {
+      validateCellSize(a.cell_size);
       const project = new Project(a.project ?? ".");
       const scene = pickScene(project, a.scene);
       const flat = new World(project).flatten(scene);
@@ -148,6 +150,7 @@ export const TOOLS = [
     handler(a) {
       const def = FIXES[a.fix];
       if (!def) throw new OptimizerError(`Unknown fix "${a.fix}".`, `Fixes: ${Object.keys(FIXES).join(", ")}.`);
+      if (a.fix === "instancing" || a.fix === "partition") validateCellSize(a.cell_size);
       const project = new Project(a.project ?? ".");
       const args = { ...a };
       if (def.needsScene) args.scene = pickScene(project, a.scene);
