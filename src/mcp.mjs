@@ -1,7 +1,7 @@
 // MCP server over stdio (JSON-RPC 2.0, newline-delimited). No dependencies: any MCP client can start it with
 // `npx -y github:laaielichter/godotwright-gameoptimizer mcp`.
 import { createInterface } from "node:readline";
-import { TOOLS, toolByName } from "./tools.mjs";
+import { TOOLS, toolByName, validateEnumArgs } from "./tools.mjs";
 import { OptimizerError } from "./project.mjs";
 import { VERSION } from "./cli.mjs";
 
@@ -27,6 +27,7 @@ export async function handle(msg) {
       try {
         const args = params.arguments ?? {};
         for (const req of tool.inputSchema.required ?? []) if (args[req] === undefined) throw new OptimizerError(`Missing required input "${req}".`);
+        validateEnumArgs(tool, args);
         const result = await tool.handler(args);
         return reply({ content: [{ type: "text", text: JSON.stringify(result, null, 1) }], structuredContent: result });
       } catch (e) {

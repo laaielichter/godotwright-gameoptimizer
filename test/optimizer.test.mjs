@@ -497,3 +497,43 @@ test("costmap and fixes reject non-positive or non-finite cell_size (#3)", async
     d.cleanup();
   }
 });
+
+test("audit rejects a value outside an option's enum, on the CLI and over MCP (#16)", async () => {
+  const d = demo();
+  try {
+    for (const args of [
+      ["audit", d.dir, "--min-severity", "bogus"],
+      ["audit", d.dir, "--detail", "nope"],
+      ["bench", d.dir, "--mode", "bogus"],
+      ["bench", d.dir, "--renderer", "bogus"],
+      ["census", d.dir, "--detail", "nope"],
+    ]) {
+      let err = "";
+      const origWrite = process.stderr.write.bind(process.stderr);
+      process.stderr.write = (chunk) => {
+        err += String(chunk);
+        return true;
+      };
+      let code;
+      try {
+        code = await cliMain(args);
+      } finally {
+        process.stderr.write = origWrite;
+      }
+      assert.notEqual(code, 0);
+      assert.match(err, /^error: --(min-severity|detail|mode|renderer) must be one of /);
+    }
+
+    const mcpRes = await handle({ jsonrpc: "2.0", id: 99, method: "tools/call", params: { name: "optimizer_audit", arguments: { project: d.dir, min_severity: "bogus" } } });
+    assert.equal(mcpRes.result.isError, true);
+    assert.match(mcpRes.result.content[0].text, /--min-severity must be one of high, medium, low, info, got "bogus"/);
+
+    // Good and omitted values behave as before.
+    const high = call("optimizer_audit", { project: d.dir, min_severity: "high" });
+    assert.ok(high.findings.length > 0 && high.findings.every((f) => f.severity === "high"));
+    const all = call("optimizer_audit", { project: d.dir });
+    assert.ok(all.findings.length > 0);
+  } finally {
+    d.cleanup();
+  }
+});
