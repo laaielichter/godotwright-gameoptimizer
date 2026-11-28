@@ -11,6 +11,9 @@
 - A value outside an option's choices (`--min-severity bogus`, `--detail nope`, `bench --mode bogus`) is refused
   with an error that names the option and lists the allowed values, on the CLI and over MCP. Before, `audit` then
   hid every finding. Thanks to @haseemajaz! (#16, #18)
+- `optimizer_audit` lists `cell_size` in its input schema, so `audit --cell-size 8` works on the CLI and agents see
+  the input over MCP; a bad value is refused as for `costmap`. Before, the CLI refused the option. Thanks to
+  @KripakaraMN15! (#19, #21)
 
 ## 0.2.0
 
