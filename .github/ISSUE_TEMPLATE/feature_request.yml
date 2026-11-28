@@ -1,0 +1,16 @@
+name: Idea or missing check
+description: Something slows your Godot game down and the optimizer does not see it yet.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem in your game
+      description: What is slow, and how do you know (profiler, monitors, a benchmark)?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What the optimizer could do
+      description: A finding, a fix, a runtime node, a measurement?

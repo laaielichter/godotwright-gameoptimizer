@@ -1,34 +1,59 @@
+<p align="center">
+  <a href="https://laaielichter.github.io/godotwright-gameoptimizer/"><img src="docs/assets/banner.svg" alt="Godotwright Game Optimizer: find what slows your Godot 4 game, fix it, prove it with a benchmark" width="100%"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/laaielichter/godotwright-gameoptimizer/actions/workflows/ci.yml"><img src="https://github.com/laaielichter/godotwright-gameoptimizer/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+  <img src="https://img.shields.io/badge/Godot-4.3%2B-478cbf?logo=godotengine&logoColor=white" alt="Godot 4.3+">
+  <img src="https://img.shields.io/badge/node-20%2B-339933?logo=node.js&logoColor=white" alt="Node 20+">
+  <img src="https://img.shields.io/badge/MCP-server-7c3aed" alt="MCP server">
+  <img src="https://img.shields.io/badge/dependencies-0-brightgreen" alt="Zero dependencies">
+</p>
+
+<p align="center">
+  <a href="https://laaielichter.github.io/godotwright-gameoptimizer/"><b>Website</b></a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#measured">Measured</a> ·
+  <a href="#install-for-your-agent">Install</a> ·
+  <a href="#tools">Tools</a> ·
+  <a href="#limits">Limits</a>
+</p>
+
 # Godotwright Game Optimizer
 
 **The performance optimizer for Godot 4 games, built for coding agents.** It reads a project, tells the agent what
 holds the frame rate, memory and load times back, applies the fixes itself, and proves each one with a benchmark and
 a screenshot comparison. Made for heavy open worlds; works on any 3D project.
 
+- **Finds the problem from the files.** The audit needs no Godot and takes under a second on a 20 000-node world.
+- **Fixes it, reversibly.** World streaming, visibility ranges, light fades, texture compression, quality tiers.
+  Every change is journaled; `undo` restores every byte.
+- **Proves it.** The same camera route before and after, frame times, draw calls, memory and a pixel comparison of
+  every screenshot. A fix that does not win is undone.
+
 By [laaielichter](https://github.com/laaielichter). MIT. Node 20+, zero dependencies, no build step.
 Sister project of [Godotwright](https://github.com/laaielichter/godotwright), the coding toolkit for Godot agents.
 
+<p align="center">
+  <img src="docs/assets/audit.svg" alt="Terminal output of gameoptimizer audit on the demo world: score 9/100, high findings such as 16k identical meshes as separate nodes and 260 lights that never fade out, each with a fix command, and the plan." width="100%">
+</p>
+
+## Quick start
+
+Try it on the heavy demo world in under a minute, no Godot needed:
+
 ```sh
-npx -y github:laaielichter/godotwright-gameoptimizer audit path/to/project
+npx -y github:laaielichter/godotwright-gameoptimizer demo ./world
+npx -y github:laaielichter/godotwright-gameoptimizer audit ./world
+npx -y github:laaielichter/godotwright-gameoptimizer costmap ./world
 ```
 
-```text
-Open World Demo  (Godot 4.7, forward_plus, 28 files, 2 scripts)
-  world/world.tscn: 20128 nodes, 17837 mesh instances (11 unique), 4508k triangles, 17837 surfaces in about 11 batches,
-                    261 lights (261 shadowed), 501 bodies, 2400 x 2400 m
-    worst view: 3892k triangles, 15129 surfaces in range (cells of 128 m)
-  score 9/100   high 4  medium 7  low 4
+On your own game: `audit path/to/project`. To let your agent do the whole loop, [add the MCP server](#install-for-your-agent).
 
-HIGH   16k identical meshes are separate nodes (5 kinds)                  fix: gameoptimizer fix instancing
-HIGH   14k small objects are drawn at any distance                        fix: gameoptimizer fix ranges
-HIGH   260 of 260 omni and spot lights never fade out (260 cast shadows)  fix: gameoptimizer fix lights
-HIGH   One scene holds a 2400 m world with 17k placed objects             fix: gameoptimizer fix partition
-MEDIUM 7 textures on 3D materials are not VRAM-compressed ...             fix: gameoptimizer fix textures
-...
-Plan: install > settings > textures > lights > ranges > instancing > partition
-Measure first: gameoptimizer bench --label baseline. After each step: bench --label <name>, compare <name>.
-```
-
-The audit needs no Godot and takes under a second on that project.
+<p align="center">
+  <img src="docs/assets/costmap.svg" alt="World cost map of the 2.4 km demo world: 16 by 16 cells, hot in the centre, with eight numbered benchmark stations on a dashed route. Worst view 3.9 million triangles." width="70%">
+</p>
 
 ## What it solves
 
@@ -91,6 +116,26 @@ What the numbers say, without rounding in our favour:
   time a shadowed lamp is drawn.
 
 Reproduce: `gameoptimizer demo /tmp/world`, then the loop below.
+
+**Before and after, station 2 of a 900 m world** (1280x720, Godot 4.7.2, same machine, run on 28 November 2026), the
+safe steps only: `install settings textures lights ranges`.
+
+| Before | After |
+| --- | --- |
+| ![Baseline: the ground and the tree crowns shimmer with a moire pattern](docs/assets/before.jpg) | ![After: mipmapped textures, the ground and the crowns are smooth](docs/assets/after.jpg) |
+
+| Over all 8 stations | Before | After | |
+| --- | ---: | ---: | --- |
+| Draw calls (avg) | 133 | 111 | -16% |
+| Objects drawn (avg) | 3 804 | 3 205 | -16% |
+| Texture memory (max) | 200 MB | 177 MB | -11% |
+| Video memory (max) | 221 MB | 202 MB | -8% |
+| Frame time p50 (software renderer) | 629 ms | 672 ms | **+7%, worse** |
+
+`compare` called this run a regression, and it was right to: on the software renderer the frame time went up. We
+have not isolated the cause; texture filtering (mipmaps plus 16x anisotropic), which a CPU rasterizer pays for in
+full, is the likely suspect. The picture changed on purpose (up to 6% of pixels): mipmaps end the moire on the
+ground and in the leaves. On a GPU, measure again and keep what wins there.
 
 ## Install for your agent
 
@@ -234,7 +279,11 @@ npm test                      # no dependencies, no Godot
 GO_TEST_GODOT=1 npm test      # also runs the runtime kit and a full optimize-and-measure in Godot
 ```
 
-See [AGENTS.md](AGENTS.md) for the layout and the rules. Issues and pull requests are welcome.
+See [AGENTS.md](AGENTS.md) for the layout and the rules, and [CONTRIBUTING.md](CONTRIBUTING.md) for how to help.
+Issues and pull requests are welcome; a finding that was wrong on your project, or a `compare` report from a real
+GPU, helps the most.
+
+If the optimizer saved you a profiling session, a star helps other Godot developers find it.
 
 ## License
 

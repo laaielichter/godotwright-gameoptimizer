@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="400" viewBox="0 0 1280 400" role="img" aria-label="Godotwright Game Optimizer: find what slows your Godot 4 game, fix it, prove it">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1622"/>
+      <stop offset="1" stop-color="#10273a"/>
+    </linearGradient>
+    <linearGradient id="hl" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#478cbf"/>
+      <stop offset="1" stop-color="#7ee787"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="400" rx="18" fill="url(#bg)"/>
+  <g opacity="0.9">
+    <!-- a small cost map: cells heat up toward the middle -->
+    <g transform="translate(860 70)">
+      <rect x="0" y="0" width="34" height="34" rx="5" fill="#11304a"/><rect x="40" y="0" width="34" height="34" rx="5" fill="#14506a"/><rect x="80" y="0" width="34" height="34" rx="5" fill="#167a7a"/><rect x="120" y="0" width="34" height="34" rx="5" fill="#14506a"/><rect x="160" y="0" width="34" height="34" rx="5" fill="#11304a"/><rect x="200" y="0" width="34" height="34" rx="5" fill="#0d1b2a"/><rect x="240" y="0" width="34" height="34" rx="5" fill="#11304a"/>
+      <rect x="0" y="40" width="34" height="34" rx="5" fill="#14506a"/><rect x="40" y="40" width="34" height="34" rx="5" fill="#2f9e6e"/><rect x="80" y="40" width="34" height="34" rx="5" fill="#8dbb4f"/><rect x="120" y="40" width="34" height="34" rx="5" fill="#e3c344"/><rect x="160" y="40" width="34" height="34" rx="5" fill="#2f9e6e"/><rect x="200" y="40" width="34" height="34" rx="5" fill="#167a7a"/><rect x="240" y="40" width="34" height="34" rx="5" fill="#14506a"/>
+      <rect x="0" y="80" width="34" height="34" rx="5" fill="#167a7a"/><rect x="40" y="80" width="34" height="34" rx="5" fill="#8dbb4f"/><rect x="80" y="80" width="34" height="34" rx="5" fill="#f39a35"/><rect x="120" y="80" width="34" height="34" rx="5" fill="#d62839"/><rect x="160" y="80" width="34" height="34" rx="5" fill="#ec5f2d"/><rect x="200" y="80" width="34" height="34" rx="5" fill="#8dbb4f"/><rect x="240" y="80" width="34" height="34" rx="5" fill="#167a7a"/>
+      <rect x="0" y="120" width="34" height="34" rx="5" fill="#14506a"/><rect x="40" y="120" width="34" height="34" rx="5" fill="#2f9e6e"/><rect x="80" y="120" width="34" height="34" rx="5" fill="#e3c344"/><rect x="120" y="120" width="34" height="34" rx="5" fill="#f39a35"/><rect x="160" y="120" width="34" height="34" rx="5" fill="#e3c344"/><rect x="200" y="120" width="34" height="34" rx="5" fill="#2f9e6e"/><rect x="240" y="120" width="34" height="34" rx="5" fill="#14506a"/>
+      <rect x="0" y="160" width="34" height="34" rx="5" fill="#11304a"/><rect x="40" y="160" width="34" height="34" rx="5" fill="#167a7a"/><rect x="80" y="160" width="34" height="34" rx="5" fill="#2f9e6e"/><rect x="120" y="160" width="34" height="34" rx="5" fill="#8dbb4f"/><rect x="160" y="160" width="34" height="34" rx="5" fill="#2f9e6e"/><rect x="200" y="160" width="34" height="34" rx="5" fill="#14506a"/><rect x="240" y="160" width="34" height="34" rx="5" fill="#11304a"/>
+      <rect x="0" y="200" width="34" height="34" rx="5" fill="#0d1b2a"/><rect x="40" y="200" width="34" height="34" rx="5" fill="#11304a"/><rect x="80" y="200" width="34" height="34" rx="5" fill="#14506a"/><rect x="120" y="200" width="34" height="34" rx="5" fill="#167a7a"/><rect x="160" y="200" width="34" height="34" rx="5" fill="#14506a"/><rect x="200" y="200" width="34" height="34" rx="5" fill="#11304a"/><rect x="240" y="200" width="34" height="34" rx="5" fill="#0d1b2a"/>
+      <polyline points="57,57 137,97 177,97 137,137 97,137" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="6 5"/>
+      <circle cx="137" cy="97" r="9" fill="#fff"/><circle cx="57" cy="57" r="6" fill="#fff"/><circle cx="177" cy="97" r="6" fill="#fff"/><circle cx="137" cy="137" r="6" fill="#fff"/><circle cx="97" cy="137" r="6" fill="#fff"/>
+    </g>
+  </g>
+  <g font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif">
+    <text x="72" y="118" fill="#8fb8d8" font-size="22" font-weight="600" letter-spacing="2">GODOTWRIGHT</text>
+    <text x="72" y="182" fill="#ffffff" font-size="60" font-weight="800">Game Optimizer</text>
+    <rect x="72" y="204" width="180" height="5" rx="2.5" fill="url(#hl)"/>
+    <text x="72" y="256" fill="#d7e3ee" font-size="27">Find what slows your Godot 4 game.</text>
+    <text x="72" y="292" fill="#d7e3ee" font-size="27">Fix it. Prove it with a benchmark.</text>
+    <text x="72" y="346" fill="#7ee787" font-size="18" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace">MCP server + CLI · zero dependencies · every fix undoable</text>
+  </g>
+</svg>

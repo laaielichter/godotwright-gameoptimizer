@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Godotwright Game Optimizer</title>
+<meta name="description" content="Performance optimizer for Godot 4 games, built for coding agents. Audits a project from its files, predicts rendering cost across an open world, applies reversible fixes and proves each one with benchmarks and screenshot comparison. MCP server and CLI, MIT.">
+<meta property="og:title" content="Godotwright Game Optimizer">
+<meta property="og:description" content="Find what slows your Godot 4 game. Fix it. Prove it with a benchmark. MCP server + CLI for coding agents.">
+<meta property="og:image" content="https://laaielichter.github.io/godotwright-gameoptimizer/assets/social-preview.png">
+<meta property="og:url" content="https://laaielichter.github.io/godotwright-gameoptimizer/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2310273a'/%3E%3Crect x='5' y='5' width='10' height='10' rx='2' fill='%23e3c344'/%3E%3Crect x='17' y='5' width='10' height='10' rx='2' fill='%23d62839'/%3E%3Crect x='5' y='17' width='10' height='10' rx='2' fill='%232f9e6e'/%3E%3Crect x='17' y='17' width='10' height='10' rx='2' fill='%23f39a35'/%3E%3C/svg%3E">
+<style>
+:root {
+  --bg: #f7f9fb; --panel: #ffffff; --ink: #0f1b26; --muted: #556575; --line: #dde4ea;
+  --accent: #2f6fa3; --accent-2: #1a7f4b; --code-bg: #0d1117; --code-ink: #e6edf3;
+  --high: #c9302c; --med: #b7791f; --chip: #eaf2f8;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b131b; --panel: #111c27; --ink: #e6edf3; --muted: #93a4b4; --line: #22313f;
+    --accent: #6cb0e6; --accent-2: #7ee787; --code-bg: #070b10; --high: #ff7b72; --med: #f0b72f; --chip: #16283a;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b131b; --panel: #111c27; --ink: #e6edf3; --muted: #93a4b4; --line: #22313f;
+  --accent: #6cb0e6; --accent-2: #7ee787; --code-bg: #070b10; --high: #ff7b72; --med: #f0b72f; --chip: #16283a;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--accent); }
+img { max-width: 100%; height: auto; display: block; }
+code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+nav { position: sticky; top: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+nav .wrap { display: flex; gap: 18px; align-items: center; height: 56px; overflow-x: auto; white-space: nowrap; }
+nav .brand { font-weight: 800; color: var(--ink); text-decoration: none; margin-right: auto; }
+nav a { text-decoration: none; color: var(--muted); font-size: 15px; }
+nav a:hover { color: var(--ink); }
+nav .gh { color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 4px 10px; }
+header.hero { background: linear-gradient(135deg, #0b1622, #10273a); color: #fff; padding: 72px 0 56px; }
+.hero h1 { font-size: clamp(36px, 6vw, 60px); line-height: 1.05; margin: 0 0 18px; letter-spacing: -0.02em; }
+.hero .kicker { color: #8fb8d8; font-weight: 700; letter-spacing: .14em; font-size: 14px; text-transform: uppercase; }
+.hero p.lead { font-size: clamp(18px, 2.4vw, 22px); color: #d7e3ee; max-width: 680px; margin: 0 0 28px; }
+.cmd { display: flex; align-items: center; gap: 10px; background: #070b10; border: 1px solid #2a3f52; border-radius: 10px; padding: 12px 14px; max-width: 720px; }
+.cmd code { color: #7ee787; font-size: 15px; overflow-x: auto; white-space: nowrap; flex: 1; }
+.cmd button { flex: none; background: #1f3448; color: #fff; border: 0; border-radius: 6px; padding: 6px 12px; font: inherit; font-size: 14px; cursor: pointer; }
+.cmd button:hover { background: #2a4560; }
+.hero .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+.btn { display: inline-block; padding: 10px 18px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; }
+.btn.primary { background: #478cbf; color: #fff; }
+.btn.ghost { border: 1px solid #3a5670; color: #fff; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 26px; color: #a9bfd2; font-size: 15px; }
+section { padding: 64px 0; border-bottom: 1px solid var(--line); }
+h2 { font-size: clamp(26px, 3.6vw, 36px); margin: 0 0 10px; letter-spacing: -0.01em; }
+.sub { color: var(--muted); max-width: 760px; margin: 0 0 30px; }
+.grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+.card h3 { margin: 0 0 6px; font-size: 18px; }
+.card p { margin: 0; color: var(--muted); font-size: 15.5px; }
+.step { font: 700 13px ui-monospace, monospace; color: var(--accent-2); display: block; margin-bottom: 6px; }
+.figure { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); background: var(--code-bg); }
+.caption { color: var(--muted); font-size: 14px; margin-top: 10px; }
+.compare { position: relative; overflow: hidden; border-radius: 14px; border: 1px solid var(--line); aspect-ratio: 16 / 9; user-select: none; touch-action: pan-y; background: #000; }
+.compare img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.compare .after { clip-path: inset(0 0 0 50%); }
+.compare .bar { position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; background: #fff; transform: translateX(-50%); pointer-events: none; }
+.compare .bar::after { content: "⇆"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 38px; height: 38px; border-radius: 50%; background: #fff; color: #0f1b26; display: grid; place-items: center; font-size: 18px; box-shadow: 0 2px 8px rgba(0,0,0,.35); }
+.compare .tag { position: absolute; top: 12px; padding: 3px 10px; border-radius: 999px; background: rgba(0,0,0,.6); color: #fff; font-size: 13px; font-weight: 600; }
+.compare .tag.l { left: 12px; } .compare .tag.r { right: 12px; }
+.compare input { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: ew-resize; margin: 0; }
+table { width: 100%; border-collapse: collapse; font-size: 15.5px; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+th, td { padding: 10px 14px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+th { background: var(--chip); font-size: 14px; }
+.scroll { overflow-x: auto; }
+.better { color: var(--accent-2); font-weight: 700; }
+pre.code { background: var(--code-bg); color: var(--code-ink); padding: 16px 18px; border-radius: 12px; overflow-x: auto; font-size: 14.5px; line-height: 1.55; margin: 0; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.tabs button { border: 1px solid var(--line); background: var(--panel); color: var(--ink); border-radius: 8px; padding: 6px 12px; font: inherit; font-size: 14.5px; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--accent); color: #fff; border-color: var(--accent); }
+.two { display: grid; gap: 28px; grid-template-columns: 1fr; }
+@media (min-width: 880px) { .two { grid-template-columns: 1.1fr .9fr; align-items: start; } }
+ul.clean { padding-left: 20px; margin: 0; } ul.clean li { margin: 6px 0; }
+.note { background: var(--chip); border-radius: 12px; padding: 14px 18px; font-size: 15.5px; }
+footer { padding: 40px 0 60px; color: var(--muted); font-size: 15px; }
+.theme { background: none; border: 1px solid var(--line); color: var(--ink); border-radius: 8px; padding: 4px 9px; cursor: pointer; font: inherit; font-size: 14px; }
+</style>
+</head>
+<body>
+<nav><div class="wrap">
+  <a class="brand" href="#top">Game Optimizer</a>
+  <a href="#how">How it works</a>
+  <a href="#measured">Measured</a>
+  <a href="#install">Install</a>
+  <a href="#tools">Tools</a>
+  <a href="#limits">Limits</a>
+  <button class="theme" id="theme" type="button" aria-label="Toggle dark mode">◐</button>
+  <a class="gh" href="https://github.com/laaielichter/godotwright-gameoptimizer">★ GitHub</a>
+</div></nav>
+
+<header class="hero" id="top"><div class="wrap">
+  <div class="kicker">Godotwright · for Godot 4</div>
+  <h1>Find what slows your Godot game.<br>Fix it. Prove it.</h1>
+  <p class="lead">An MCP server and CLI that lets a coding agent read your project, find what holds the frame rate, memory and load times back, apply the fix and check it with a benchmark and a screenshot comparison. Every change can be undone.</p>
+  <div class="cmd"><code id="cmd1">npx -y github:laaielichter/godotwright-gameoptimizer audit path/to/project</code><button type="button" data-copy="cmd1">Copy</button></div>
+  <div class="ctas">
+    <a class="btn primary" href="#install">Add it to your agent</a>
+    <a class="btn ghost" href="https://github.com/laaielichter/godotwright-gameoptimizer">View on GitHub</a>
+  </div>
+  <div class="facts"><span>MIT</span><span>Node 20+</span><span>Zero dependencies</span><span>Godot 4.3+ (built on 4.7.2)</span><span>Claude Code · Codex · Cursor · Gemini CLI</span></div>
+</div></header>
+
+<main>
+<section id="audit"><div class="wrap">
+  <h2>One command, a ranked list of problems</h2>
+  <p class="sub">The audit reads scenes, models, textures, import files, project settings, scripts and shaders. It needs no Godot and took under a second on this 20 000-node demo world. Every finding names its fix.</p>
+  <div class="figure"><img src="assets/audit.svg" width="1000" height="483" alt="Terminal output of gameoptimizer audit: score 9/100, four high findings such as 16k identical meshes as separate nodes and 260 lights that never fade out, each with a fix command, and a plan."></div>
+  <p class="caption">Real output on <code>gameoptimizer demo</code>, trimmed to the headlines. The full report gives evidence per finding.</p>
+</div></section>
+
+<section id="how"><div class="wrap">
+  <h2>How it works</h2>
+  <p class="sub">The agent works in a loop: read, measure, change one thing, measure again, keep it or undo it.</p>
+  <div class="grid">
+    <div class="card"><span class="step">1 · audit</span><h3>Read the project</h3><p>Findings with evidence and a plan of fixes in order. No Godot needed.</p></div>
+    <div class="card"><span class="step">2 · bench</span><h3>Measure a baseline</h3><p>Frame times, hitches, draw calls, memory and a screenshot per station, on a route through the predicted hotspots.</p></div>
+    <div class="card"><span class="step">3 · fix</span><h3>Change one thing</h3><p>Settings, textures, lights, visibility ranges, instancing, world streaming. Dry run first if you like.</p></div>
+    <div class="card"><span class="step">4 · compare</span><h3>Keep it or undo it</h3><p>Better, same or worse, and whether the picture changed. <code>undo</code> restores every byte.</p></div>
+  </div>
+</div></section>
+
+<section id="costmap"><div class="wrap two">
+  <div>
+    <h2>Where is it slow? Ask the map.</h2>
+    <p class="sub">You normally find out by flying around. The world cost map predicts triangles, draw calls and shadowed lights per cell from the files, finds the hotspots and writes a benchmark route through them.</p>
+    <ul class="clean">
+      <li>Cells of 128 m, weighted by what is in view</li>
+      <li>Hotspots become benchmark stations</li>
+      <li>The same route is flown before and after every fix</li>
+    </ul>
+  </div>
+  <div class="figure"><img src="assets/costmap.svg" width="686" height="482" alt="Heat map of a 2.4 km demo world in 16 by 16 cells, hot in the town centre, with eight numbered benchmark stations connected by a dashed route. Worst view 3.9 million triangles."></div>
+</div></section>
+
+<section id="measured"><div class="wrap">
+  <h2>Measured, not promised</h2>
+  <p class="sub">Every number here comes from <code>bench</code> and <code>compare</code> on the demo world. The machine is a 4-core container without a GPU: rendering is Mesa's software Vulkan driver (llvmpipe), so milliseconds only compare with each other. Counts and memory are exact.</p>
+
+  <h3>Before and after: station 2 of a 900 m world</h3>
+  <p class="sub" style="margin-bottom:16px">The safe steps only (<code>install settings textures lights ranges</code>), 1280x720, Godot 4.7.2, flown on 28 November 2026. Drag the bar.</p>
+  <div class="compare">
+    <img src="assets/before.jpg" alt="Before: the ground and the tree crowns shimmer with a moire pattern" width="1280" height="720">
+    <img class="after" src="assets/after.jpg" alt="After: mipmapped textures, the ground and the crowns are smooth" width="1280" height="720">
+    <span class="tag l">Before</span><span class="tag r">After</span>
+    <div class="bar"></div>
+    <input type="range" min="0" max="100" value="50" aria-label="Move the comparison between before and after">
+  </div>
+  <div class="scroll" style="margin:20px 0 12px"><table>
+    <tr><th>Over all 8 stations</th><th class="n">Before</th><th class="n">After</th><th class="n">Change</th></tr>
+    <tr><td>Draw calls (avg)</td><td class="n">133</td><td class="n">111</td><td class="n better">-16%</td></tr>
+    <tr><td>Objects drawn (avg)</td><td class="n">3 804</td><td class="n">3 205</td><td class="n better">-16%</td></tr>
+    <tr><td>Texture memory (max)</td><td class="n">200 MB</td><td class="n">177 MB</td><td class="n better">-11%</td></tr>
+    <tr><td>Video memory (max)</td><td class="n">221 MB</td><td class="n">202 MB</td><td class="n better">-8%</td></tr>
+    <tr><td>Frame time p50 (software renderer)</td><td class="n">629 ms</td><td class="n">672 ms</td><td class="n" style="color:var(--high);font-weight:700">+7%</td></tr>
+  </table></div>
+  <p class="note" style="margin-bottom:40px"><strong>The tool called this run a regression, and it was right.</strong> On the software renderer the frame time went up. We have not isolated the cause; texture filtering (mipmaps plus 16x anisotropic), which a CPU rasterizer pays for in full, is the likely suspect. The picture changed on purpose: mipmaps end the moire on the ground and in the leaves. On a GPU, measure again and keep what wins there.</p>
+
+  <h3>The 2.4 km world, 19 371 nodes, flown through headless</h3>
+  <div class="scroll"><table>
+    <tr><th></th><th class="n">Before</th><th class="n">After install, settings, textures, lights, ranges, partition</th></tr>
+    <tr><td>Frame time p50 (CPU side)</td><td class="n">8.19 ms</td><td class="n better">1.31 ms</td></tr>
+    <tr><td>Frame time p99</td><td class="n">19.66 ms</td><td class="n better">5.31 ms</td></tr>
+    <tr><td>Hitches during the flight</td><td class="n">66</td><td class="n better">5</td></tr>
+    <tr><td>Nodes in the tree (max)</td><td class="n">19 371</td><td class="n better">7 877</td></tr>
+    <tr><td>Static memory</td><td class="n">91 MB</td><td class="n">85 MB</td></tr>
+  </table></div>
+  <p class="note" style="margin-top:20px"><strong>Not everything wins.</strong> Merging identical meshes into MultiMeshes removed nodes but cost 13% more frame time on the software renderer, so the comparison flagged it and it was undone. That is why the tool measures, and why <code>instancing</code> is marked optional. Measure on your own target hardware and keep what wins there.</p>
+</div></section>
+
+<section id="solves"><div class="wrap">
+  <h2>What Godot 4 leaves to you</h2>
+  <p class="sub">Godot renders beautifully, but a large world runs into the same walls every time.</p>
+  <div class="grid">
+    <div class="card"><h3>No world streaming</h3><p><code>partition</code> cuts a world into chunk scenes; GOStreamer loads them around the camera on a thread, within a per-frame budget.</p></div>
+    <div class="card"><h3>No HLOD</h3><p>Every chunk gets a stand-in scene: one MultiMesh per mesh, drawn while the chunk is not loaded, so the skyline stays.</p></div>
+    <div class="card"><h3>Only a far plane</h3><p><code>ranges</code> sizes a visibility range from each object's own size on screen and takes tiny objects out of the shadow passes.</p></div>
+    <div class="card"><h3>No texture streaming</h3><p><code>textures</code> sets VRAM compression and mipmaps for 3D textures: 4 to 8 times less GPU memory.</p></div>
+    <div class="card"><h3>No dynamic resolution</h3><p>GOQuality has five tiers (low to cinematic); GOGovernor holds a target frame rate by moving the resolution scale.</p></div>
+    <div class="card"><h3>Shader compile stutter</h3><p>GOPrewarm draws every material once behind the loading screen; the probe counts pipeline compilations per frame.</p></div>
+    <div class="card"><h3>Lights that never switch off</h3><p><code>lights</code> sets a distance fade from each light's range; optional dual-paraboloid shadows.</p></div>
+    <div class="card"><h3>Worlds built from code</h3><p>The live census runs the game, counts the real tree and names the script that built each node. GOWorldPolicy culls it at run time.</p></div>
+  </div>
+</div></section>
+
+<section id="install"><div class="wrap">
+  <h2>Add it to your agent</h2>
+  <p class="sub">The server speaks MCP over stdio. One command, no install step. Measuring needs Godot 4 (pass <code>godot</code> or set <code>GODOT</code>); the audit, the cost map and every fix work without it.</p>
+  <div class="tabs" role="tablist">
+    <button type="button" role="tab" aria-selected="true" data-tab="t-claude">Claude Code</button>
+    <button type="button" role="tab" aria-selected="false" data-tab="t-codex">Codex</button>
+    <button type="button" role="tab" aria-selected="false" data-tab="t-json">Cursor, VS Code, Gemini CLI, Cline</button>
+    <button type="button" role="tab" aria-selected="false" data-tab="t-cli">CLI only</button>
+  </div>
+  <pre class="code" id="t-claude">claude mcp add gameoptimizer -- npx -y github:laaielichter/godotwright-gameoptimizer mcp</pre>
+  <pre class="code" id="t-codex" hidden># ~/.codex/config.toml
+[mcp_servers.gameoptimizer]
+command = "npx"
+args = ["-y", "github:laaielichter/godotwright-gameoptimizer", "mcp"]</pre>
+  <pre class="code" id="t-json" hidden>{
+  "mcpServers": {
+    "gameoptimizer": {
+      "command": "npx",
+      "args": ["-y", "github:laaielichter/godotwright-gameoptimizer", "mcp"]
+    }
+  }
+}</pre>
+  <pre class="code" id="t-cli" hidden>npx -y github:laaielichter/godotwright-gameoptimizer demo ./world     # a heavy open world to try it on
+npx -y github:laaielichter/godotwright-gameoptimizer audit ./world
+npx -y github:laaielichter/godotwright-gameoptimizer fix ranges ./world --scene world/world.tscn --dry-run</pre>
+  <p class="caption">On Windows, if <code>npx</code> does not start from the client: <code>"command": "cmd", "args": ["/c", "npx", "-y", ...]</code>.</p>
+</div></section>
+
+<section id="tools"><div class="wrap">
+  <h2>Tools</h2>
+  <p class="sub">Every tool is both an MCP tool and a CLI command with <code>--json</code>.</p>
+  <div class="scroll"><table>
+    <tr><th>Tool</th><th>CLI</th><th>What it does</th></tr>
+    <tr><td><code>optimizer_audit</code></td><td><code>audit</code></td><td>Findings with evidence and the plan.</td></tr>
+    <tr><td><code>optimizer_costmap</code></td><td><code>costmap</code></td><td>Predicted cost per world cell, hotspots, a benchmark route.</td></tr>
+    <tr><td><code>optimizer_census</code></td><td><code>census</code></td><td>Runs a scene (or a <code>.pck</code>), counts the live tree, names the script that built it.</td></tr>
+    <tr><td><code>optimizer_textures</code></td><td><code>textures</code></td><td>GPU memory per texture, largest first.</td></tr>
+    <tr><td><code>optimizer_fix</code></td><td><code>fix &lt;name&gt;</code></td><td><code>install</code>, <code>policy</code>, <code>settings</code>, <code>textures</code>, <code>lods</code>, <code>lights</code>, <code>ranges</code>, <code>instancing</code>, <code>partition</code>.</td></tr>
+    <tr><td><code>optimizer_undo</code></td><td><code>undo</code></td><td>Takes a fix back; restores every byte.</td></tr>
+    <tr><td><code>optimizer_bench</code></td><td><code>bench</code></td><td>Percentiles, hitches with cause, monitors, screenshots.</td></tr>
+    <tr><td><code>optimizer_compare</code></td><td><code>compare</code></td><td>Per metric, per station, per screenshot. Exit code 1 on a regression.</td></tr>
+    <tr><td><code>optimizer_import</code></td><td><code>import</code></td><td>Godot's import, also on machines without a GPU.</td></tr>
+    <tr><td><code>optimizer_explain</code></td><td><code>explain</code></td><td>Why a finding costs performance and how the fix works.</td></tr>
+    <tr><td><code>optimizer_demo</code></td><td><code>demo</code></td><td>Writes the heavy open-world demo project.</td></tr>
+  </table></div>
+</div></section>
+
+<section id="limits"><div class="wrap">
+  <h2>Limits</h2>
+  <ul class="clean">
+    <li>The audit reads text scenes and resources (<code>.tscn</code>, <code>.tres</code>) and glTF. Binary <code>.scn</code> and <code>.res</code> are counted but not opened.</li>
+    <li>A world built entirely from code has no scene to partition: <code>census</code> and <code>fix policy</code> help, the rest is a change in that code.</li>
+    <li>Occluders are not baked for you; the audit says when they are missing.</li>
+    <li>Without a GPU, frame times come from a software renderer and only compare with each other.</li>
+  </ul>
+  <p style="margin-top:18px"><a href="https://github.com/laaielichter/godotwright-gameoptimizer#limits">All limits in the README</a></p>
+</div></section>
+</main>
+
+<footer><div class="wrap">
+  Made by <a href="https://github.com/laaielichter">laaielichter</a>. MIT licensed.
+  Sister project of <a href="https://github.com/laaielichter/godotwright">Godotwright</a>, the coding toolkit for Godot agents.
+  · <a href="https://github.com/laaielichter/godotwright-gameoptimizer/issues">Issues</a>
+  · <a href="https://github.com/laaielichter/godotwright-gameoptimizer/blob/main/CONTRIBUTING.md">Contributing</a>
+</div></footer>
+
+<script>
+document.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", async () => {
+  const text = document.getElementById(b.dataset.copy).textContent;
+  try { await navigator.clipboard.writeText(text); b.textContent = "Copied"; } catch { b.textContent = "Select it"; }
+  setTimeout(() => (b.textContent = "Copy"), 1500);
+}));
+document.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-tab]").forEach((o) => {
+    o.setAttribute("aria-selected", String(o === b));
+    document.getElementById(o.dataset.tab).hidden = o !== b;
+  });
+}));
+document.querySelectorAll(".compare input").forEach((r) => r.addEventListener("input", () => {
+  const c = r.closest(".compare");
+  c.querySelector(".after").style.clipPath = `inset(0 0 0 ${r.value}%)`;
+  c.querySelector(".bar").style.left = r.value + "%";
+}));
+const root = document.documentElement;
+try { const t = localStorage.getItem("theme"); if (t) root.dataset.theme = t; } catch {}
+document.getElementById("theme").addEventListener("click", () => {
+  const dark = root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  root.dataset.theme = dark ? "light" : "dark";
+  try { localStorage.setItem("theme", root.dataset.theme); } catch {}
+});
+</script>
+</body>
+</html>
