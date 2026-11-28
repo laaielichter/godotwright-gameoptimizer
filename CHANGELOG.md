@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- The texture report reads Radiance `.hdr` and OpenEXR `.exr` headers, so HDR skies and EXR lightmaps are listed
+  with their real size and counted at 8 bytes per pixel in the VRAM total. Before, they were skipped. Thanks to
+  @kragent66-glitch! (#6, #11)
+
 ## 0.2.0
 
 For worlds that are built from code, and games that only exist as a pack.
