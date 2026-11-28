@@ -5,6 +5,9 @@
 - The texture report reads Radiance `.hdr` and OpenEXR `.exr` headers, so HDR skies and EXR lightmaps are listed
   with their real size and counted at 8 bytes per pixel in the VRAM total. Before, they were skipped. Thanks to
   @kragent66-glitch! (#6, #11)
+- `--cell-size` / `cell_size` of 0, a negative number or a value that is not a number (`abc`) is refused at once
+  with an error that names the option. Before, `costmap`, `audit` and the `instancing` and `partition` fixes hung.
+  Thanks to @rishav-raj-genx! (#3, #13)
 
 ## 0.2.0
 
