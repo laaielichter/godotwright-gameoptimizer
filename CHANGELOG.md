@@ -8,6 +8,9 @@
 - `--cell-size` / `cell_size` of 0, a negative number or a value that is not a number (`abc`) is refused at once
   with an error that names the option. Before, `costmap` and the `instancing` and `partition` fixes hung.
   Thanks to @rishav-raj-genx! (#3, #13)
+- A value outside an option's choices (`--min-severity bogus`, `--detail nope`, `bench --mode bogus`) is refused
+  with an error that names the option and lists the allowed values, on the CLI and over MCP. Before, `audit` then
+  hid every finding. Thanks to @haseemajaz! (#16, #18)
 
 ## 0.2.0
 
