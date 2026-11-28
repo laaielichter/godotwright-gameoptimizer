@@ -224,7 +224,7 @@ optimizer_compare run=<step>            better / same / worse, picture same / ch
 
 | Tool | CLI | What it does |
 | --- | --- | --- |
-| `optimizer_audit` | `audit` | Findings with evidence and the plan. Reads scenes, models, textures, import files, settings, scripts and shaders. |
+| `optimizer_audit` | `audit` | Findings with evidence and the plan. Accepts optional `cell_size` (metres) to control cost-map resolution; defaults based on world size. Reads scenes, models, textures, import files, settings, scripts and shaders. |
 | `optimizer_costmap` | `costmap` | Predicted cost per world cell, hotspots, a text picture of the map, a benchmark route. |
 | `optimizer_census` | `census` | Starts a scene (project or `--pack game.pck`), lets it build, counts the live tree and reports findings. For worlds built from code. |
 | `optimizer_textures` | `textures` | GPU memory per texture, largest first. |
