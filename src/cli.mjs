@@ -123,6 +123,25 @@ function text(command, r) {
   return JSON.stringify(r, null, 2);
 }
 
+/** The topic a mistyped one most likely meant: one it starts with or that starts with it, else within 2 edits. */
+export function closestTopic(typed, topics) {
+  const t = String(typed).toLowerCase();
+  if (!t) return undefined;
+  const prefix = topics.find((k) => k.startsWith(t) || t.startsWith(k));
+  if (prefix) return prefix;
+  const distance = (a, b) => {
+    let row = Array.from({ length: b.length + 1 }, (_, i) => i);
+    for (let i = 1; i <= a.length; i++) {
+      const next = [i];
+      for (let j = 1; j <= b.length; j++) next[j] = Math.min(row[j] + 1, next[j - 1] + 1, row[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      row = next;
+    }
+    return row[b.length];
+  };
+  const best = topics.map((k) => [k, distance(t, k)]).sort((x, y) => x[1] - y[1])[0];
+  return best && best[1] <= 2 ? best[0] : undefined;
+}
+
 export async function main(argv) {
   const [command, ...rest] = argv;
   if (!command || command === "help" || command === "--help" || command === "-h") {
@@ -151,6 +170,11 @@ export async function main(argv) {
     const { args, json } = parseArgs(rest, tool, command);
     for (const req of tool.inputSchema.required ?? []) if (args[req] === undefined) throw new OptimizerError(`${command} needs <${req}>.`, HELP.split("\n").find((l) => l.trim().startsWith(command)) ?? "");
     const result = await tool.handler(args);
+    if (command === "explain" && !json && result.found === false) {
+      const near = closestTopic(result.topic, result.topics);
+      process.stderr.write(`error: No explain topic "${result.topic}".${near ? ` Did you mean ${near}?` : ""}\nTopics: ${result.topics.join(", ")}\n`);
+      return 1;
+    }
     process.stdout.write((json ? JSON.stringify(result, null, 2) : text(command, result)) + "\n");
     if (command === "compare" && result.performance === "worse") return 1;
     return 0;
