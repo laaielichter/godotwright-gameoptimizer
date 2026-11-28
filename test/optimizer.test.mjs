@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -455,4 +456,25 @@ test("textures: a Radiance .hdr and an OpenEXR .exr file are listed with their r
   } finally {
     d.cleanup();
   }
+});
+
+test("explain with an unknown topic is an error line and exit 1, a close topic is suggested", () => {
+  const run = (...args) => spawnSync(process.execPath, [join(import.meta.dirname, "..", "bin", "gameoptimizer.mjs"), "explain", ...args], { encoding: "utf8" });
+  const typo = run("shadow");
+  assert.equal(typo.status, 1);
+  assert.match(typo.stderr, /^error: No explain topic "shadow"\. Did you mean shadows\?\nTopics: workflow, census,/);
+  assert.equal(typo.stdout, "");
+  const far = run("zzzzzz");
+  assert.equal(far.status, 1);
+  assert.doesNotMatch(far.stderr, /Did you mean/);
+});
+
+test("explain keeps its known-topic text and its --json output", () => {
+  const run = (...args) => spawnSync(process.execPath, [join(import.meta.dirname, "..", "bin", "gameoptimizer.mjs"), "explain", ...args], { encoding: "utf8" });
+  const ok = run("shadows");
+  assert.equal(ok.status, 0);
+  assert.match(ok.stdout, /Check: /);
+  const json = run("shadow", "--json");
+  assert.equal(json.status, 0);
+  assert.equal(JSON.parse(json.stdout).found, false);
 });
