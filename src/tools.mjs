@@ -56,6 +56,24 @@ const FIXES = {
   partition: { run: (p, tx, a) => fixPartition(p, tx, { scene: a.scene, cellSize: a.cell_size, loadRadius: a.load_radius, farRadius: a.far_radius, nodes: a.nodes, minChildren: a.min_children ?? 24, pixels: a.pixels ?? 6, far: a.far !== false, proxies: a.stand_ins !== false }), needsScene: true, summary: "Cuts the world scene into streamed chunk scenes with GOStreamer nodes." },
 };
 
+/**
+ * Reject a value outside an inputSchema enum, naming the option and its
+ * allowed values. Called from the CLI and the MCP server before the handler
+ * runs, so one check covers every tool, including ones added later.
+ * `fix` is left to optimizer_fix's own `Unknown fix` error (tools.mjs:152).
+ */
+export function validateEnumArgs(tool, args) {
+  for (const [name, def] of Object.entries(tool.inputSchema.properties ?? {})) {
+    if (name === "fix" || !def?.enum) continue;
+    const value = args[name];
+    if (value !== undefined && !def.enum.includes(value)) {
+      throw new OptimizerError(
+        `--${name.replace(/_/g, "-")} must be one of ${def.enum.join(", ")}, got ${JSON.stringify(value)}.`,
+      );
+    }
+  }
+}
+
 export const TOOLS = [
   {
     name: "optimizer_audit",
