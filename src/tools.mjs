@@ -85,6 +85,7 @@ export const TOOLS = [
       properties: {
         project: projectProp,
         scene: { ...sceneProp, description: "Audit only this scene's world. Default: the main scene and the largest scenes." },
+        cell_size: { type: "number", description: "Cell size in metres. Default: chosen from the size of the world." },
         detail: { type: "string", enum: ["brief", "full"], description: "brief (default): findings with up to 3 pieces of evidence each. full: all evidence." },
         min_severity: { type: "string", enum: ["high", "medium", "low", "info"], description: "Leave out findings below this severity." },
       },

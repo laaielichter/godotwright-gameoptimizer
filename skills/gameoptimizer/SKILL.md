@@ -10,7 +10,7 @@ commands through the CLI: `npx -y github:laaielichter/godotwright-gameoptimizer 
 
 ## The loop
 
-1. `optimizer_audit {project}`. Read `findings` (ranked, with evidence) and `plan.steps`.
+1. `optimizer_audit {project, cell_size?: number}`. Optionally set `cell_size` in metres to control cost-map resolution; the default is chosen from world size. Read `findings` (ranked, with evidence) and `plan.steps`.
 2. `optimizer_bench {project, label: "baseline"}`. Skip only when there is no Godot; then say so in your report and
    rely on the static numbers (draws, triangles, nodes, VRAM estimate).
 3. For each plan step, in order: `optimizer_fix {project, fix, ...}`. Then `optimizer_bench {label: "<fix>"}` and

@@ -498,6 +498,64 @@ test("costmap and fixes reject non-positive or non-finite cell_size (#3)", async
   }
 });
 
+test("audit accepts cell_size and rejects non-positive or non-finite values", async () => {
+  const d = demo();
+  try {
+    const auditTool = TOOLS.find((t) => t.name === "optimizer_audit");
+    assert.ok(auditTool.inputSchema.properties.cell_size);
+    assert.equal(auditTool.inputSchema.properties.cell_size.type, "number");
+
+    const ok = call("optimizer_audit", { project: d.dir, cell_size: 128 });
+    assert.ok(ok.findings.length > 0);
+
+    for (const bad of [0, -5, Number.NaN]) {
+      // Direct tool validation
+      assert.throws(
+        () => call("optimizer_audit", { project: d.dir, cell_size: bad }),
+        /--cell-size/
+      );
+
+      // MCP validation
+      const mcpRes = await handle({
+        jsonrpc: "2.0",
+        id: 100,
+        method: "tools/call",
+        params: {
+          name: "optimizer_audit",
+          arguments: { project: d.dir, cell_size: bad },
+        },
+      });
+      assert.equal(mcpRes.result.isError, true);
+      assert.match(mcpRes.result.content[0].text, /--cell-size/);
+
+      // CLI validation
+      let err = "";
+      const origWrite = process.stderr.write.bind(process.stderr);
+      process.stderr.write = (chunk) => {
+        err += String(chunk);
+        return true;
+      };
+
+      let code;
+      try {
+        code = await cliMain([
+          "audit",
+          d.dir,
+          "--cell-size",
+          String(bad),
+        ]);
+      } finally {
+        process.stderr.write = origWrite;
+      }
+
+      assert.notEqual(code, 0);
+      assert.match(err, /^error: --cell-size/);
+    }
+  } finally {
+    d.cleanup();
+  }
+});
+
 test("audit rejects a value outside an option's enum, on the CLI and over MCP (#16)", async () => {
   const d = demo();
   try {
