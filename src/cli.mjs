@@ -1,5 +1,5 @@
 // Command line: every tool as a command, JSON out with --json, readable text otherwise.
-import { TOOLS, toolByName, FIXES } from "./tools.mjs";
+import { TOOLS, toolByName, FIXES, validateEnumArgs } from "./tools.mjs";
 import { OptimizerError } from "./project.mjs";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -150,6 +150,7 @@ export async function main(argv) {
   try {
     const { args, json } = parseArgs(rest, tool, command);
     for (const req of tool.inputSchema.required ?? []) if (args[req] === undefined) throw new OptimizerError(`${command} needs <${req}>.`, HELP.split("\n").find((l) => l.trim().startsWith(command)) ?? "");
+    validateEnumArgs(tool, args);
     const result = await tool.handler(args);
     process.stdout.write((json ? JSON.stringify(result, null, 2) : text(command, result)) + "\n");
     if (command === "compare" && result.performance === "worse") return 1;
