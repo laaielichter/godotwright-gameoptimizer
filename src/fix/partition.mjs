@@ -4,7 +4,7 @@
 import { ResourceFile, makeSection } from "../godot/tscn.mjs";
 import { aabbRadius, unionAabb, xformAabb, invertTransform, mulTransform, num } from "../godot/variant.mjs";
 import { World } from "../world.mjs";
-import { autoCellSize } from "../costmap.mjs";
+import { autoCellSize, validateCellSize } from "../costmap.mjs";
 import { distanceForPixels } from "../analyze/world.mjs";
 
 const REF = /\b(ExtResource|SubResource)\("([^"]+)"\)/g;
@@ -45,6 +45,7 @@ function findContainers(file, minChildren, only) {
 }
 
 export function fixPartition(project, tx, { scene, cellSize, loadRadius, farRadius, minChildren = 24, nodes, pixels = 6, far = true, proxies = true } = {}) {
+  validateCellSize(cellSize);
   if (!project.exists("addons/gameoptimizer/go_streamer.gd") && !tx.writes.has("addons/gameoptimizer/go_streamer.gd")) {
     return { partitioned: 0, error: "The runtime kit is not installed. Run fix `install` first: the chunks are loaded by addons/gameoptimizer/go_streamer.gd." };
   }

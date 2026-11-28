@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { demo, call, read, snapshot, exrHeader } from "./helpers.mjs";
+import { buildCostMap } from "../src/costmap.mjs";
+import { main as cliMain } from "../src/cli.mjs";
 import { ResourceFile } from "../src/godot/tscn.mjs";
 import { Project } from "../src/project.mjs";
 import { World, summarize } from "../src/world.mjs";
@@ -452,6 +454,45 @@ test("textures: a Radiance .hdr and an OpenEXR .exr file are listed with their r
     // 8 bytes per pixel uncompressed, as vramBytes() already did for hdr: true.
     assert.equal(byFile.get("textures/sky.hdr").vram_mb, 4);
     assert.equal(byFile.get("textures/light.exr").vram_mb, 1);
+  } finally {
+    d.cleanup();
+  }
+});
+
+test("costmap and fixes reject non-positive or non-finite cell_size (#3)", async () => {
+  const d = demo();
+  try {
+    for (const bad of [0, -5, Number.NaN]) {
+      assert.throws(() => buildCostMap([], { cellSize: bad }), /--cell-size/);
+      assert.throws(() => call("optimizer_costmap", { project: d.dir, cell_size: bad }), /--cell-size/);
+      assert.throws(() => call("optimizer_fix", { project: d.dir, fix: "instancing", cell_size: bad }), /--cell-size/);
+      assert.throws(() => call("optimizer_fix", { project: d.dir, fix: "partition", cell_size: bad }), /--cell-size/);
+
+      const mcpRes = await handle({ jsonrpc: "2.0", id: 99, method: "tools/call", params: { name: "optimizer_costmap", arguments: { project: d.dir, cell_size: bad } } });
+      assert.equal(mcpRes.result.isError, true);
+      assert.match(mcpRes.result.content[0].text, /--cell-size/);
+    }
+
+    for (const raw of ["0", "-5", "abc"]) {
+      let err = "";
+      const origWrite = process.stderr.write.bind(process.stderr);
+      process.stderr.write = (chunk) => {
+        err += String(chunk);
+        return true;
+      };
+      let code;
+      try {
+        code = await cliMain(["costmap", d.dir, "--cell-size", raw]);
+      } finally {
+        process.stderr.write = origWrite;
+      }
+      assert.notEqual(code, 0);
+      assert.match(err, /^error: --cell-size/);
+    }
+
+    const ok = call("optimizer_costmap", { project: d.dir, cell_size: 128 });
+    assert.equal(ok.cell_size, 128);
+    assert.ok(ok.columns > 0 && ok.rows > 0);
   } finally {
     d.cleanup();
   }

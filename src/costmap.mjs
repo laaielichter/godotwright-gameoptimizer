@@ -3,6 +3,17 @@
 // standing in it would have in range (view cost), honouring visibility ranges. The worst cells are the hotspots: that
 // is where the frame rate will be lowest, and where a benchmark route should go.
 import { aabbCenter, aabbRadius } from "./godot/variant.mjs";
+import { OptimizerError } from "./project.mjs";
+
+export function validateCellSize(cellSize) {
+  if (cellSize === undefined) return;
+  if (typeof cellSize !== "number" || !Number.isFinite(cellSize) || cellSize <= 0) {
+    throw new OptimizerError(
+      `--cell-size must be a number greater than 0 (metres), got ${cellSize}.`,
+      "Pass a positive number of metres, or omit it to pick from the world size."
+    );
+  }
+}
 
 export function autoCellSize(bounds) {
   if (!bounds) return 64;
@@ -18,6 +29,7 @@ export function autoCellSize(bounds) {
  * @param options {cellSize, viewDistance}
  */
 export function buildCostMap(objects, { cellSize, viewDistance = 1000, maxCells = 250_000 } = {}) {
+  validateCellSize(cellSize);
   const drawn = objects.filter((o) => (o.kind === "mesh" || o.kind === "multimesh" || o.kind === "csg" || o.kind === "particles") && o.aabb && o.visible !== false);
   const lights = objects.filter((o) => o.kind === "light" && o.type !== "DirectionalLight3D");
   let bounds = null;
