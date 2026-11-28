@@ -1,0 +1,23 @@
+name: Bug or wrong finding
+description: The tool crashed, a fix broke something, or a finding is wrong on your project.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What did you run, what did you expect, what did you get?
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: The command and its output (`--json` if you can). Trim paths you do not want to share.
+      render: text
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: Node, Godot, OS, and the renderer (Forward+, Mobile, Compatibility).
+      placeholder: Node 22, Godot 4.7.2, Windows 11, Forward+
