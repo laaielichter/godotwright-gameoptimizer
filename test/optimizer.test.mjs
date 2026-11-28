@@ -1,4 +1,5 @@
 import { test } from "node:test";
+import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -455,4 +456,18 @@ test("textures: a Radiance .hdr and an OpenEXR .exr file are listed with their r
   } finally {
     d.cleanup();
   }
+});
+
+test("<command> --help and -h print that command's options and exit 0", () => {
+  const run = (...args) => spawnSync(process.execPath, [join(import.meta.dirname, "..", "bin", "gameoptimizer.mjs"), ...args], { encoding: "utf8" });
+  for (const flag of ["--help", "-h"]) {
+    const r = run("audit", flag);
+    assert.equal(r.status, 0);
+    assert.equal(r.stderr, "");
+    assert.match(r.stdout, /^gameoptimizer audit \[project\]/);
+    assert.match(r.stdout, /--min-severity/);
+    assert.match(r.stdout, /--json/);
+  }
+  for (const c of ["fix", "bench", "compare", "census", "explain"]) assert.equal(run(c, "--help").status, 0, c);
+  assert.match(run("--help").stdout, /^gameoptimizer /);
 });

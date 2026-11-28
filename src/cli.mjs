@@ -123,6 +123,19 @@ function text(command, r) {
   return JSON.stringify(r, null, 2);
 }
 
+/** The help for one command, built from the descriptions in its tool's inputSchema. */
+export function commandHelp(command, tool) {
+  const props = tool.inputSchema.properties ?? {};
+  const pos = POSITIONAL[command] ?? ["project"];
+  const usage = `gameoptimizer ${command}${pos.map((n) => ` [${n}]`).join("")}`;
+  const L = [`${usage}   ${tool.title}`, "", tool.description, "", "Options:"];
+  const rows = Object.entries(props).map(([k, v]) => [`--${k.replace(/_/g, "-")}${v.type === "boolean" ? "" : " " + (v.type === "number" ? "N" : v.type === "array" ? "A,B" : "VALUE")}`, v.description ?? ""]);
+  rows.push(["--json", "print the full JSON result"]);
+  const w = Math.max(...rows.map((r) => r[0].length));
+  for (const [flag, d] of rows) L.push(`  ${flag.padEnd(w)}  ${d}`.trimEnd());
+  return L.join("\n");
+}
+
 export async function main(argv) {
   const [command, ...rest] = argv;
   if (!command || command === "help" || command === "--help" || command === "-h") {
@@ -146,6 +159,10 @@ export async function main(argv) {
   if (!tool) {
     process.stderr.write(`Unknown command "${command}".\n\n${HELP}`);
     return 2;
+  }
+  if (rest.includes("--help") || rest.includes("-h")) {
+    process.stdout.write(commandHelp(command, tool) + "\n");
+    return 0;
   }
   try {
     const { args, json } = parseArgs(rest, tool, command);
