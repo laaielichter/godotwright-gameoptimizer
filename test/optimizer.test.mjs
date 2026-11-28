@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { demo, call, read, snapshot } from "./helpers.mjs";
+import { demo, call, read, snapshot, exrHeader } from "./helpers.mjs";
 import { ResourceFile } from "../src/godot/tscn.mjs";
 import { Project } from "../src/project.mjs";
 import { World, summarize } from "../src/world.mjs";
@@ -435,6 +435,23 @@ test("script rules from large code-built games", async () => {
     assert.equal(ids.get("script/whole-tree-search").severity, "high");
     assert.equal(ids.get("script/whole-tree-search").metric.places, 3);
     assert.ok(ids.has("script/mesh-node-per-object") && ids.has("script/material-per-object"), "the builder script is found");
+  } finally {
+    d.cleanup();
+  }
+});
+
+test("textures: a Radiance .hdr and an OpenEXR .exr file are listed with their real size and HDR memory (#6)", () => {
+  const d = demo();
+  try {
+    writeFileSync(join(d.dir, "textures/sky.hdr"), "#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 512 +X 1024\n");
+    writeFileSync(join(d.dir, "textures/light.exr"), exrHeader(512, 256));
+    const list = call("optimizer_textures", { project: d.dir, limit: 100 }).largest;
+    const byFile = new Map(list.map((t) => [t.file, t]));
+    assert.equal(byFile.get("textures/sky.hdr")?.size, "1024x512");
+    assert.equal(byFile.get("textures/light.exr")?.size, "512x256");
+    // 8 bytes per pixel uncompressed, as vramBytes() already did for hdr: true.
+    assert.equal(byFile.get("textures/sky.hdr").vram_mb, 4);
+    assert.equal(byFile.get("textures/light.exr").vram_mb, 1);
   } finally {
     d.cleanup();
   }

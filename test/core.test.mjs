@@ -5,6 +5,7 @@ import { ResourceFile, parseSections } from "../src/godot/tscn.mjs";
 import { editProjectSettings } from "../src/fix/settings.mjs";
 import { encodePng, decodePng } from "../src/png.mjs";
 import { imageInfoFromBuffer, vramBytes } from "../src/godot/image.mjs";
+import { exrHeader } from "./helpers.mjs";
 import { scanScript, hotFunctions } from "../src/godot/gdscript.mjs";
 import { distanceForPixels } from "../src/analyze/world.mjs";
 
@@ -101,4 +102,27 @@ test("visibility distance follows the size on screen", () => {
   assert.ok(Math.abs(distanceForPixels(1, 6) - 234.6) < 1);
   assert.ok(distanceForPixels(0.1, 6) < 30);
   assert.equal(distanceForPixels(2, 6), 2 * distanceForPixels(1, 6));
+});
+
+test("image: Radiance .hdr and OpenEXR .exr headers give their size and the HDR memory", () => {
+  const sky = Buffer.from("#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 512 +X 1024\n", "latin1"); // the bytes from the issue
+  assert.deepEqual(imageInfoFromBuffer(sky), { format: "hdr", width: 1024, height: 512, hdr: true });
+  assert.equal(vramBytes(imageInfoFromBuffer(sky), { compressed: false, mipmaps: false, hdr: true }), 1024 * 512 * 8);
+  const positive = imageInfoFromBuffer(Buffer.from("#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n+Y 256 +X 128\n", "latin1"));
+  assert.deepEqual([positive.width, positive.height], [128, 256]);
+
+  const exr = exrHeader(1024, 512);
+  assert.deepEqual(imageInfoFromBuffer(exr), { format: "exr", width: 1024, height: 512, hdr: true });
+  assert.equal(vramBytes(imageInfoFromBuffer(exr), { compressed: false, mipmaps: false, hdr: true }), 1024 * 512 * 8);
+  assert.deepEqual(imageInfoFromBuffer(exrHeader(32, 8, { xMin: -8, yMin: 4 })), { format: "exr", width: 32, height: 8, hdr: true });
+});
+
+test("image: a truncated or wrong .hdr/.exr header is null, never an invented size", () => {
+  for (const text of ["#?RADIANCE\nFORMAT=32-bit_rle_rgbe\n\n-Y 512", "#?RADIANCE\n", "#?RADIANCE\n\n-Y 0 +X 0\n", "#?RADIANCE\n\n-X 640 -Y 480\n"]) {
+    assert.equal(imageInfoFromBuffer(Buffer.from(text, "latin1")), null, text);
+  }
+  const box = Buffer.from([0, 0, 0, 0]);
+  const shortBox = Buffer.concat([Buffer.from("dataWindow\0box2i\0\0\0\0\0", "latin1"), box, Buffer.from([0])]);
+  const noWindow = Buffer.concat([Buffer.from("channels\0chlist\0\0\0\0\0", "latin1"), Buffer.from([0])]);
+  for (const b of [Buffer.from([0x76, 0x2f, 0x31, 0x01]), noWindow, shortBox]) assert.equal(imageInfoFromBuffer(b), null);
 });
